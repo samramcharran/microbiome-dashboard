@@ -412,6 +412,39 @@ def create_results_dataframe(records: list[dict]) -> pd.DataFrame:
     return df
 
 
+def render_executive_summary(df: pd.DataFrame):
+    """Render executive summary for stakeholders."""
+    if df.empty:
+        return
+
+    st.markdown("## Executive Summary")
+
+    # Key insight box
+    total = len(df)
+    banked = len(df[df["ingestion_decision"] == "AUTO-INGEST"]) if "ingestion_decision" in df.columns else 0
+    public = len(df[df["access_type"] == "Public"]) if "access_type" in df.columns else 0
+    nanopore = len(df[df["seq_type"].str.contains("Nanopore", na=False)]) if "seq_type" in df.columns else 0
+
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        st.success(f"""
+        **Discovery Complete** - {total} datasets identified
+
+        - **{banked} datasets** ({banked/total*100:.0f}%) meet quality thresholds for immediate ingestion
+        - **{public} datasets** are publicly accessible (no restrictions)
+        - **{nanopore} datasets** use Oxford Nanopore long-read sequencing
+        """)
+
+    with col2:
+        # Progress indicator
+        progress = banked / total if total > 0 else 0
+        st.metric("Pipeline Ready", f"{progress*100:.0f}%")
+        st.progress(progress)
+
+    st.markdown("---")
+
+
 def render_summary_header(df: pd.DataFrame):
     """Render the summary header with live statistics."""
     st.markdown("## Live Discovery Status")
@@ -565,6 +598,117 @@ def render_quality_charts(df: pd.DataFrame):
             st.plotly_chart(fig, use_container_width=True)
 
 
+def render_organism_breakdown(df: pd.DataFrame):
+    """Show organism/taxonomy breakdown for microbiologists."""
+    st.subheader("Organism Distribution")
+    st.markdown("Taxonomic breakdown of organisms in the discovered datasets.")
+
+    if df.empty or "organism" not in df.columns:
+        st.info("No organism data available.")
+        return
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Top organisms
+        organism_counts = df["organism"].value_counts().head(10)
+        if not organism_counts.empty:
+            fig = px.bar(
+                x=organism_counts.values,
+                y=organism_counts.index,
+                orientation="h",
+                title="Top 10 Organisms",
+                labels={"x": "Dataset Count", "y": "Organism"}
+            )
+            fig.update_layout(yaxis={"categoryorder": "total ascending"})
+            st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        # Organism categories
+        def categorize_organism(org):
+            org_lower = str(org).lower()
+            if "human" in org_lower or "homo" in org_lower:
+                return "Human microbiome"
+            elif "mouse" in org_lower or "mus" in org_lower:
+                return "Mouse microbiome"
+            elif "gut" in org_lower or "fecal" in org_lower or "intestin" in org_lower:
+                return "Gut-associated"
+            elif "metagenome" in org_lower:
+                return "Metagenome"
+            elif "bacteria" in org_lower:
+                return "Bacterial isolate"
+            else:
+                return "Other"
+
+        df_copy = df.copy()
+        df_copy["organism_category"] = df_copy["organism"].apply(categorize_organism)
+        cat_counts = df_copy["organism_category"].value_counts()
+
+        fig = px.pie(
+            values=cat_counts.values,
+            names=cat_counts.index,
+            title="Sample Categories"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+
+def render_sample_type_analysis(df: pd.DataFrame, records: list[dict]):
+    """Show sample type breakdown."""
+    st.subheader("Sample Type Analysis")
+    st.markdown("Distribution of sample types relevant for microbiome research.")
+
+    if not records:
+        st.info("No sample data available.")
+        return
+
+    # Extract sample types from harmonized fields
+    sample_types = []
+    body_sites = []
+
+    for rec in records:
+        harmonized = rec.get("harmonized_fields", {})
+        sample_type = harmonized.get("sample_type", "")
+        if sample_type:
+            sample_types.append(sample_type.lower())
+
+        # Check raw attributes for body site info
+        attrs = rec.get("sample_attributes", {})
+        for key, value in attrs.items():
+            if any(term in key.lower() for term in ["body_site", "tissue", "isolation_source"]):
+                if value and value != "N/A":
+                    body_sites.append(value.lower())
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if sample_types:
+            type_counts = pd.Series(sample_types).value_counts().head(10)
+            fig = px.bar(
+                x=type_counts.values,
+                y=type_counts.index,
+                orientation="h",
+                title="Sample Types",
+                labels={"x": "Count", "y": "Type"}
+            )
+            fig.update_layout(yaxis={"categoryorder": "total ascending"})
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No sample type metadata available.")
+
+    with col2:
+        # Fecal vs other breakdown
+        fecal_count = len(df[df["is_fecal_sample"] == True]) if "is_fecal_sample" in df.columns else 0
+        other_count = len(df) - fecal_count
+
+        fig = px.pie(
+            values=[fecal_count, other_count],
+            names=["Fecal/Gut", "Other"],
+            title="Gut Microbiome Relevance",
+            color_discrete_sequence=["#2ecc71", "#95a5a6"]
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+
 def render_metadata_harmonization(df: pd.DataFrame, records: list[dict]):
     """Show metadata harmonization results."""
     st.subheader("Metadata Harmonization Status")
@@ -637,7 +781,10 @@ def main():
                 "Human Gut Microbiome",
                 "Clinical Stool Studies",
                 "16S Amplicon (Any Platform)",
-                "Shotgun Metagenomics"
+                "Shotgun Metagenomics",
+                "Oral Microbiome",
+                "Skin Microbiome",
+                "Infant Gut Studies"
             ]
         )
 
@@ -647,7 +794,10 @@ def main():
             "Human Gut Microbiome": "gut microbiome[All Fields] AND human[Organism]",
             "Clinical Stool Studies": "stool[All Fields] AND clinical[All Fields] AND microbiome[All Fields]",
             "16S Amplicon (Any Platform)": "16S[All Fields] AND amplicon[All Fields] AND fecal[All Fields]",
-            "Shotgun Metagenomics": "metagenome[All Fields] AND WGS[Strategy] AND gut[All Fields]"
+            "Shotgun Metagenomics": "metagenome[All Fields] AND WGS[Strategy] AND gut[All Fields]",
+            "Oral Microbiome": "oral[All Fields] AND microbiome[All Fields] AND human[Organism]",
+            "Skin Microbiome": "skin[All Fields] AND microbiome[All Fields] AND human[Organism]",
+            "Infant Gut Studies": "infant[All Fields] AND gut[All Fields] AND microbiome[All Fields]"
         }
 
         default_query = preset_queries.get(preset, "")
@@ -710,15 +860,16 @@ def main():
     df = st.session_state.results_df
     records = st.session_state.records
 
-    # Show summary header
+    # Show summary header (live metrics)
     render_summary_header(df)
 
     if not df.empty:
-        st.markdown("---")
+        # Executive summary for stakeholders
+        render_executive_summary(df)
 
         # Tabs
-        tab1, tab2, tab3, tab4 = st.tabs([
-            "Dataset Queue", "Quality Analytics", "Metadata Harmonization", "Nanopore Focus"
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            "Dataset Queue", "Quality Analytics", "Organisms", "Sample Types", "Metadata", "Nanopore"
         ])
 
         with tab1:
@@ -838,9 +989,15 @@ def main():
             render_quality_charts(df)
 
         with tab3:
-            render_metadata_harmonization(df, records)
+            render_organism_breakdown(df)
 
         with tab4:
+            render_sample_type_analysis(df, records)
+
+        with tab5:
+            render_metadata_harmonization(df, records)
+
+        with tab6:
             st.subheader("Long-Read / Nanopore Analysis")
             long_read_df = df[df["seq_type"].str.contains("Long-Read", na=False)] if "seq_type" in df.columns else pd.DataFrame()
 

@@ -414,47 +414,59 @@ def create_results_dataframe(records: list[dict]) -> pd.DataFrame:
 
 def render_summary_header(df: pd.DataFrame):
     """Render the summary header with live statistics."""
-    st.markdown("## Discovery Summary")
+    st.markdown("## Live Discovery Status")
+    st.caption(
+        "Data Source: [NCBI Sequence Read Archive (SRA)](https://www.ncbi.nlm.nih.gov/sra) | "
+        "[E-utilities API Documentation](https://www.ncbi.nlm.nih.gov/books/NBK25501/)"
+    )
 
     if df.empty:
-        col1, col2, col3, col4, col5 = st.columns(5)
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
         with col1:
-            st.metric("Datasets Identified", 0)
+            st.metric("Identified", 0)
         with col2:
-            st.metric("Ready for Ingestion", 0)
+            st.metric("Banked", 0)
         with col3:
             st.metric("Pending Review", 0)
         with col4:
-            st.metric("Public Access", 0)
+            st.metric("Public", 0)
         with col5:
-            st.metric("Restricted Access", 0)
+            st.metric("Restricted", 0)
+        with col6:
+            st.metric("Total Gb", "0.0")
         return
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
 
     with col1:
-        st.metric("Datasets Identified", len(df))
+        st.metric("Identified", len(df), help="Total datasets found matching query")
 
     with col2:
         if "ingestion_decision" in df.columns:
-            auto_ingest = len(df[df["ingestion_decision"] == "AUTO-INGEST"])
-            st.metric("Ready for Ingestion", auto_ingest,
-                     delta=f"{auto_ingest/len(df)*100:.0f}%" if len(df) > 0 else "0%")
+            banked = len(df[df["ingestion_decision"] == "AUTO-INGEST"])
+            st.metric("Banked", banked,
+                     delta=f"{banked/len(df)*100:.0f}%" if len(df) > 0 else "0%",
+                     help="High-quality datasets ready for ingestion")
 
     with col3:
         if "ingestion_decision" in df.columns:
             review = len(df[df["ingestion_decision"] == "REVIEW"])
-            st.metric("Pending Review", review)
+            st.metric("Pending Review", review, help="Datasets requiring manual review")
 
     with col4:
         if "access_type" in df.columns:
             public = len(df[df["access_type"] == "Public"])
-            st.metric("Public Access", public)
+            st.metric("Public", public, help="Publicly accessible datasets")
 
     with col5:
         if "access_type" in df.columns:
             restricted = len(df[df["access_type"].str.contains("Restricted", na=False)])
-            st.metric("Restricted Access", restricted)
+            st.metric("Restricted", restricted, help="Controlled access (dbGaP, etc.)")
+
+    with col6:
+        if "total_gb" in df.columns:
+            total_gb = df["total_gb"].sum()
+            st.metric("Total Gb", f"{total_gb:.1f}", help="Total sequencing data volume")
 
 
 def render_quality_charts(df: pd.DataFrame):
@@ -788,8 +800,13 @@ def main():
                         "text/csv"
                     )
 
-            # Quick links
-            st.markdown("### Source Links")
+            # Verified source links with NCBI references
+            st.markdown("### Verified NCBI Source Links")
+            st.markdown(
+                "Each dataset below links to its official NCBI record. "
+                "All accessions are verified via [NCBI E-utilities API](https://www.ncbi.nlm.nih.gov/books/NBK25501/)."
+            )
+
             for idx, row in filtered_df.head(10).iterrows():
                 run = row.get("run_accession", "")
                 run_url = row.get("run_url", "")
@@ -798,21 +815,23 @@ def main():
                 pubmed = row.get("pubmed_ids", "")
                 decision = row.get("ingestion_decision", "")
                 title = str(row.get("title", ""))[:50]
+                organism = row.get("organism", "")
 
                 links = []
-                if run_url:
-                    links.append(f"[{run}]({run_url})")
-                if bioproject_url:
-                    links.append(f"[{bioproject}]({bioproject_url})")
+                if run_url and run:
+                    links.append(f"[SRA Run: {run}]({run_url})")
+                if bioproject_url and bioproject:
+                    links.append(f"[BioProject: {bioproject}]({bioproject_url})")
                 if pubmed:
                     for pmid in str(pubmed).split(","):
                         pmid = pmid.strip()
                         if pmid:
-                            links.append(f"[PMID:{pmid}](https://pubmed.ncbi.nlm.nih.gov/{pmid}/)")
+                            links.append(f"[PubMed: {pmid}](https://pubmed.ncbi.nlm.nih.gov/{pmid}/)")
 
-                status = "✓" if decision == "AUTO-INGEST" else "?" if decision == "REVIEW" else "✗"
+                status_icon = "BANKED" if decision == "AUTO-INGEST" else "REVIEW" if decision == "REVIEW" else "REJECT"
                 if links:
-                    st.markdown(f"{status} **{title}...** | {' | '.join(links)}")
+                    st.markdown(f"**[{status_icon}]** {title}... (*{organism}*)")
+                    st.markdown(f"  {' | '.join(links)}")
 
         with tab2:
             st.subheader("Quality Analytics")
@@ -882,11 +901,18 @@ def main():
         **Grades:** A (85+) = Auto-Ingest | B (70+) = Auto-Ingest | C (55+) = Review | D (<55) = Reject
         """)
 
-    # Footer
+    # Footer with data source attribution
     st.markdown("---")
+    st.markdown(
+        "**Data Sources & References**\n\n"
+        "- [NCBI Sequence Read Archive (SRA)](https://www.ncbi.nlm.nih.gov/sra) - Primary data source\n"
+        "- [NCBI E-utilities API](https://www.ncbi.nlm.nih.gov/books/NBK25501/) - Data retrieval\n"
+        "- [NCBI BioProject](https://www.ncbi.nlm.nih.gov/bioproject/) - Study metadata\n"
+        "- [PubMed](https://pubmed.ncbi.nlm.nih.gov/) - Linked publications\n"
+    )
     st.caption(
-        "Data Discovery Engine | Sources: NCBI SRA (ncbi.nlm.nih.gov/sra) | "
-        "All accessions and links verified via E-utilities API"
+        "All dataset accessions (SRR, SRX, PRJNA) are real identifiers retrieved from NCBI. "
+        "Click any link to verify on the official NCBI website."
     )
 
 

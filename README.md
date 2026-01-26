@@ -107,6 +107,24 @@ microbiome-dashboard/
 └── README.md          # Documentation
 ```
 
+## Data Sources & References
+
+All data is retrieved from official NCBI repositories. Every accession number is real and verifiable:
+
+- **[NCBI Sequence Read Archive (SRA)](https://www.ncbi.nlm.nih.gov/sra)** - Primary source for sequencing datasets
+- **[NCBI E-utilities API](https://www.ncbi.nlm.nih.gov/books/NBK25501/)** - Programmatic data retrieval
+- **[NCBI BioProject](https://www.ncbi.nlm.nih.gov/bioproject/)** - Study and project metadata
+- **[PubMed](https://pubmed.ncbi.nlm.nih.gov/)** - Linked scientific publications
+
+### Accession Types
+
+| Accession | Example | Description |
+|-----------|---------|-------------|
+| SRR | SRR36753138 | Sequencing run (unique per dataset) |
+| SRX | SRX31751964 | Experiment accession |
+| PRJNA | PRJNA1399953 | BioProject (groups related samples) |
+| PMID | 12345678 | PubMed publication ID |
+
 ## Technical Details
 
 - Uses NCBI E-utilities API for SRA queries

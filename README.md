@@ -1,17 +1,18 @@
 # Microbiome Dataset Discovery Dashboard
 
-A Streamlit application for searching, scoring, and analyzing microbiome datasets from NCBI Sequence Read Archive (SRA).
+A Streamlit application for searching, scoring, and analyzing microbiome datasets from NCBI Sequence Read Archive (SRA). Optimized for both short-read (Illumina) and long-read (Oxford Nanopore) sequencing technologies.
 
 ## Features
 
 - **SRA Search**: Query NCBI SRA for microbiome datasets using flexible search terms
-- **Quality Scoring**: Automatic scoring based on:
-  - Sequencing depth (read count)
-  - Average read length
-  - Metadata completeness
-  - Sequencing platform
-- **Interactive Data Table**: Filter and sort results by quality grade and platform
+- **Technology-Specific Scoring**: Separate scoring algorithms for:
+  - **Short-read (Illumina)**: Optimized for read count and 250bp+ reads
+  - **Long-read (Nanopore)**: Optimized for throughput (Gb) and read length (10kb+)
+- **Clinical Metadata Detection**: Identifies datasets with patient/clinical metadata relevant for large cohort studies
+- **Fecal Sample Filtering**: Filter for gut microbiome-relevant stool/fecal samples
+- **Interactive Data Table**: Filter and sort results by quality grade, sequencing type, and sample type
 - **Quality Charts**: Visualize quality distributions, platform breakdown, and score components
+- **Nanopore Analysis Tab**: Dedicated view for long-read data with read length vs throughput scatter plots
 - **CSV Export**: Download filtered results for further analysis
 
 ## Installation
@@ -39,28 +40,63 @@ The dashboard will open in your browser at `http://localhost:8501`.
 
 ### Search Examples
 
-- `microbiome[All Fields] AND human[Organism]` - Human microbiome studies
-- `16S[All Fields] AND gut[All Fields]` - 16S gut microbiome studies
-- `metagenome[All Fields] AND soil[All Fields]` - Soil metagenomics
-- `amplicon[All Fields] AND mouse[Organism]` - Mouse amplicon studies
+**Nanopore Fecal Studies:**
+```
+fecal[All Fields] AND Oxford Nanopore[Platform]
+```
+
+**Long-Read Gut Microbiome:**
+```
+gut microbiome[All Fields] AND (nanopore[All Fields] OR "long read"[All Fields])
+```
+
+**Clinical Stool Studies:**
+```
+stool[All Fields] AND clinical[All Fields] AND microbiome[All Fields]
+```
+
+**Human Fecal 16S:**
+```
+16S[All Fields] AND fecal[All Fields] AND human[Organism]
+```
 
 ## Quality Scoring System
 
-Datasets are scored on a 100-point scale:
+Datasets are scored on a 100+ point scale with technology-specific criteria:
+
+### Short-Read (Illumina) Scoring
 
 | Component | Max Points | Criteria |
 |-----------|------------|----------|
 | Sequencing Depth | 30 | Based on total read count |
-| Read Length | 20 | Average read length |
+| Read Length | 20 | 250bp+ scores highest |
 | Metadata | 30 | Number of sample attributes |
-| Platform | 20 | Sequencing technology used |
+| Platform | 20 | Illumina scores highest |
+| Clinical Fields | 10 | Patient/clinical metadata |
+| Sample Relevance | 5 | Fecal sample bonus |
 
-Grades are assigned as:
-- **A**: 90-100 points
+### Long-Read (Nanopore) Scoring
+
+| Component | Max Points | Criteria |
+|-----------|------------|----------|
+| Throughput | 30 | Based on total gigabases (10+ Gb optimal) |
+| Read Length | 25 | 10kb+ scores highest (strain-level resolution) |
+| Metadata | 25 | Number of sample attributes |
+| Platform | 20 | PromethION > MinION/GridION > Flongle |
+| Clinical Fields | 10 | Patient/clinical metadata |
+| Sample Relevance | 5 | Fecal sample bonus |
+
+### Quality Grades
+
+- **A**: 90+ points
 - **B**: 80-89 points
 - **C**: 70-79 points
 - **D**: 60-69 points
 - **F**: Below 60 points
+
+### Clinical Metadata Fields Tracked
+
+Subject ID, patient ID, collection date, timepoint, visit, age, sex, disease status, diagnosis, treatment, medication, BMI, diet, antibiotics, geographic location
 
 ## Project Structure
 
@@ -78,6 +114,13 @@ microbiome-dashboard/
 - Built with Streamlit for interactive web interface
 - Plotly for responsive visualizations
 - Pandas for data manipulation
+
+## Use Cases
+
+- **Benchmarking**: Compare your sequencing data quality against public datasets
+- **Reference Selection**: Find high-quality datasets for method validation
+- **Clinical Study Design**: Identify comparable large-cohort studies
+- **Technology Evaluation**: Compare Nanopore vs Illumina dataset characteristics
 
 ## License
 

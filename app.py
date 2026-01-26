@@ -74,7 +74,7 @@ STUDY_TYPES = {
     "Isolate Genome": ["isolate", "pure culture", "single strain", "genome assembly"],
     "Metatranscriptomics": ["rna-seq", "metatranscript", "transcriptome"],
     "Clinical Trial": ["randomized", "placebo", "intervention", "clinical trial", "rct"]
-]
+}
 
 
 def search_sra(query: str, max_results: int = 50) -> list[str]:

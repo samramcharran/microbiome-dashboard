@@ -50,6 +50,32 @@ RESTRICTED_KEYWORDS = [
     "protected", "consent", "irb", "hipaa", "pii"
 ]
 
+# Disease categories for prioritization (gut-brain axis focus)
+DISEASE_CATEGORIES = {
+    "Gut-Brain Axis": ["depression", "anxiety", "stress", "mood", "psychiatric", "mental",
+                       "neurological", "parkinson", "alzheimer", "autism", "asd", "adhd",
+                       "cognitive", "brain", "nervous system", "psycho"],
+    "Pain Conditions": ["pain", "fibromyalgia", "migraine", "headache", "nociception",
+                        "chronic pain", "neuropathic"],
+    "GI Disorders": ["ibs", "ibd", "crohn", "colitis", "constipation", "diarrhea",
+                     "gerd", "reflux", "dyspepsia", "functional gi"],
+    "Metabolic": ["obesity", "diabetes", "metabolic syndrome", "insulin", "glucose",
+                  "weight", "bmi", "overweight"],
+    "Immune/Inflammatory": ["inflammation", "autoimmune", "allergy", "atopic", "asthma",
+                            "eczema", "rheumatoid", "lupus"],
+    "Infectious": ["infection", "pathogen", "cdiff", "c. difficile", "sepsis"],
+    "Healthy/Control": ["healthy", "control", "normal", "reference"]
+}
+
+# Study type classification
+STUDY_TYPES = {
+    "16S Amplicon": ["16s", "amplicon", "v3-v4", "v4", "rrna", "16s rrna"],
+    "Shotgun Metagenomics": ["wgs", "shotgun", "metagenome", "metagenomic", "whole genome"],
+    "Isolate Genome": ["isolate", "pure culture", "single strain", "genome assembly"],
+    "Metatranscriptomics": ["rna-seq", "metatranscript", "transcriptome"],
+    "Clinical Trial": ["randomized", "placebo", "intervention", "clinical trial", "rct"]
+]
+
 
 def search_sra(query: str, max_results: int = 50) -> list[str]:
     """Search NCBI SRA for datasets matching the query."""
@@ -246,6 +272,34 @@ def extract_experiment_data(exp_package) -> Optional[dict]:
     if library is not None:
         record["library_strategy"] = get_text(library, "LIBRARY_STRATEGY")
         record["library_source"] = get_text(library, "LIBRARY_SOURCE")
+
+    # Classify disease relevance from title/abstract
+    searchable_text = " ".join([
+        record.get("title", ""),
+        record.get("study_title", ""),
+        record.get("study_abstract", "")
+    ]).lower()
+
+    # Disease classification
+    detected_diseases = []
+    for category, keywords in DISEASE_CATEGORIES.items():
+        if any(kw in searchable_text for kw in keywords):
+            detected_diseases.append(category)
+    record["disease_categories"] = detected_diseases
+    record["disease_category"] = detected_diseases[0] if detected_diseases else "Unclassified"
+    record["gut_brain_relevant"] = "Gut-Brain Axis" in detected_diseases or "Pain Conditions" in detected_diseases
+
+    # Study type classification
+    detected_study_types = []
+    library_strategy = record.get("library_strategy", "").lower()
+    for study_type, keywords in STUDY_TYPES.items():
+        if any(kw in searchable_text or kw in library_strategy for kw in keywords):
+            detected_study_types.append(study_type)
+    record["study_types"] = detected_study_types
+    record["primary_study_type"] = detected_study_types[0] if detected_study_types else "Other"
+
+    # Estimate download size (rough: 1 read ~ 500 bytes compressed)
+    record["estimated_size_gb"] = (record.get("total_bases", 0) * 0.3) / 1e9  # ~30% compression
 
     return record
 
@@ -524,7 +578,7 @@ def render_quality_charts(df: pd.DataFrame):
                     "REJECT": "#e74c3c"
                 }
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     with col2:
         if "access_type" in df.columns:
@@ -539,7 +593,7 @@ def render_quality_charts(df: pd.DataFrame):
                     "Restricted (dbGaP/Controlled)": "#e74c3c"
                 }
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     # Score distribution
     col1, col2 = st.columns(2)
@@ -559,7 +613,7 @@ def render_quality_charts(df: pd.DataFrame):
                 }
             )
             fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     with col2:
         score_cols = ["depth_score", "length_score", "metadata_score", "clinical_score"]
@@ -572,7 +626,7 @@ def render_quality_charts(df: pd.DataFrame):
                 title="Average Score Components",
                 labels={"x": "Component", "y": "Avg Score"}
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     # Technology and sample breakdown
     col1, col2 = st.columns(2)
@@ -585,7 +639,7 @@ def render_quality_charts(df: pd.DataFrame):
                 names=tech_counts.index,
                 title="Sequencing Technology"
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     with col2:
         if "is_fecal_sample" in df.columns:
@@ -595,7 +649,7 @@ def render_quality_charts(df: pd.DataFrame):
                 names=["Fecal/Gut" if x else "Other" for x in fecal_counts.index],
                 title="Sample Type (Gut Relevance)"
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
 
 def render_organism_breakdown(df: pd.DataFrame):
@@ -621,7 +675,7 @@ def render_organism_breakdown(df: pd.DataFrame):
                 labels={"x": "Dataset Count", "y": "Organism"}
             )
             fig.update_layout(yaxis={"categoryorder": "total ascending"})
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     with col2:
         # Organism categories
@@ -649,7 +703,7 @@ def render_organism_breakdown(df: pd.DataFrame):
             names=cat_counts.index,
             title="Sample Categories"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 
 def render_sample_type_analysis(df: pd.DataFrame, records: list[dict]):
@@ -691,7 +745,7 @@ def render_sample_type_analysis(df: pd.DataFrame, records: list[dict]):
                 labels={"x": "Count", "y": "Type"}
             )
             fig.update_layout(yaxis={"categoryorder": "total ascending"})
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("No sample type metadata available.")
 
@@ -706,7 +760,277 @@ def render_sample_type_analysis(df: pd.DataFrame, records: list[dict]):
             title="Gut Microbiome Relevance",
             color_discrete_sequence=["#2ecc71", "#95a5a6"]
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
+
+
+def render_disease_prioritization(df: pd.DataFrame, records: list[dict]):
+    """Show disease prioritization for strategic planning."""
+    st.subheader("Disease Cohort Prioritization")
+    st.markdown(
+        "Strategic overview of disease categories represented in discovered datasets. "
+        "Helps prioritize which cohorts to pursue for data acquisition."
+    )
+
+    if df.empty:
+        st.info("No data available.")
+        return
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Disease category distribution
+        if "disease_category" in df.columns:
+            disease_counts = df["disease_category"].value_counts()
+            fig = px.bar(
+                x=disease_counts.values,
+                y=disease_counts.index,
+                orientation="h",
+                title="Datasets by Disease Category",
+                labels={"x": "Dataset Count", "y": "Disease Category"},
+                color=disease_counts.values,
+                color_continuous_scale="Blues"
+            )
+            fig.update_layout(yaxis={"categoryorder": "total ascending"}, showlegend=False)
+            st.plotly_chart(fig, width="stretch")
+
+    with col2:
+        # Gut-brain axis relevance
+        if "gut_brain_relevant" in df.columns:
+            gb_count = df["gut_brain_relevant"].sum()
+            other_count = len(df) - gb_count
+            fig = px.pie(
+                values=[gb_count, other_count],
+                names=["Gut-Brain Relevant", "Other"],
+                title="Gut-Brain Axis Relevance",
+                color_discrete_sequence=["#9b59b6", "#95a5a6"]
+            )
+            st.plotly_chart(fig, width="stretch")
+
+    # Priority recommendations
+    st.markdown("### Prioritization Recommendations")
+
+    if "disease_category" in df.columns and "ingestion_decision" in df.columns:
+        priority_data = []
+        for category in df["disease_category"].unique():
+            cat_df = df[df["disease_category"] == category]
+            total = len(cat_df)
+            banked = len(cat_df[cat_df["ingestion_decision"] == "AUTO-INGEST"])
+            public = len(cat_df[cat_df["access_type"] == "Public"]) if "access_type" in cat_df.columns else 0
+            total_gb = cat_df["total_gb"].sum() if "total_gb" in cat_df.columns else 0
+
+            priority_data.append({
+                "Disease Category": category,
+                "Total Datasets": total,
+                "High Quality": banked,
+                "Public Access": public,
+                "Data Volume (Gb)": f"{total_gb:.1f}",
+                "Recommendation": "HIGH PRIORITY" if banked >= 3 and public >= 2 else "MEDIUM" if banked >= 1 else "LOW"
+            })
+
+        priority_df = pd.DataFrame(priority_data).sort_values("High Quality", ascending=False)
+        st.dataframe(priority_df, width="stretch")
+
+
+def render_study_type_analysis(df: pd.DataFrame):
+    """Show study type classification."""
+    st.subheader("Study Type Classification")
+    st.markdown("Breakdown by sequencing approach (16S amplicon vs shotgun metagenomics vs isolate genomes).")
+
+    if df.empty or "primary_study_type" not in df.columns:
+        st.info("No study type data available.")
+        return
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        type_counts = df["primary_study_type"].value_counts()
+        fig = px.pie(
+            values=type_counts.values,
+            names=type_counts.index,
+            title="Study Types"
+        )
+        st.plotly_chart(fig, width="stretch")
+
+    with col2:
+        # Cross-tab: study type vs quality
+        if "quality_grade" in df.columns:
+            cross_tab = pd.crosstab(df["primary_study_type"], df["quality_grade"])
+            fig = px.bar(
+                cross_tab,
+                barmode="stack",
+                title="Study Type by Quality Grade",
+                color_discrete_map={"A": "#2ecc71", "B": "#3498db", "C": "#f39c12", "D": "#e74c3c"}
+            )
+            st.plotly_chart(fig, width="stretch")
+
+
+def render_actionable_insights(df: pd.DataFrame, records: list[dict]):
+    """Generate actionable insights for stakeholders."""
+    st.subheader("Actionable Insights")
+    st.markdown("Auto-generated recommendations based on discovery results.")
+
+    if df.empty:
+        st.info("Run a search to generate insights.")
+        return
+
+    insights = []
+
+    # Total stats
+    total = len(df)
+    banked = len(df[df["ingestion_decision"] == "AUTO-INGEST"]) if "ingestion_decision" in df.columns else 0
+    public = len(df[df["access_type"] == "Public"]) if "access_type" in df.columns else 0
+
+    insights.append(f"Discovered **{total} datasets** matching search criteria.")
+    insights.append(f"**{banked} datasets** ({banked/total*100:.0f}%) meet quality thresholds for immediate ingestion.")
+    insights.append(f"**{public} datasets** are publicly accessible without restrictions.")
+
+    # Gut-brain specific
+    if "gut_brain_relevant" in df.columns:
+        gb_count = df["gut_brain_relevant"].sum()
+        if gb_count > 0:
+            insights.append(f"**{gb_count} datasets** are relevant to gut-brain axis research.")
+
+    # Top disease recommendation
+    if "disease_category" in df.columns:
+        top_disease = df["disease_category"].value_counts().head(1)
+        if not top_disease.empty:
+            insights.append(f"Most represented category: **{top_disease.index[0]}** ({top_disease.values[0]} datasets).")
+
+    # Data volume
+    if "total_gb" in df.columns:
+        total_gb = df["total_gb"].sum()
+        insights.append(f"Total data volume: **{total_gb:.1f} Gb** across all datasets.")
+
+    # Nanopore availability
+    if "seq_type" in df.columns:
+        nanopore = len(df[df["seq_type"].str.contains("Nanopore", na=False)])
+        if nanopore > 0:
+            insights.append(f"**{nanopore} datasets** use Oxford Nanopore long-read sequencing.")
+
+    # Display insights
+    for insight in insights:
+        st.markdown(f"- {insight}")
+
+    # Specific recommendations
+    st.markdown("### Recommendations")
+
+    recommendations = []
+
+    if banked > 5:
+        recommendations.append("**Proceed with bulk ingestion** - sufficient high-quality datasets available.")
+    elif banked > 0:
+        recommendations.append("**Selective ingestion recommended** - review individual datasets before ingestion.")
+    else:
+        recommendations.append("**Expand search criteria** - current results do not meet quality thresholds.")
+
+    if "gut_brain_relevant" in df.columns and df["gut_brain_relevant"].sum() > 3:
+        recommendations.append("**Gut-brain cohort opportunity** - multiple relevant datasets identified.")
+
+    restricted = len(df[df["access_type"].str.contains("Restricted", na=False)]) if "access_type" in df.columns else 0
+    if restricted > 0:
+        recommendations.append(f"**{restricted} restricted datasets** require dbGaP/controlled access applications.")
+
+    for rec in recommendations:
+        st.success(rec)
+
+
+def render_ml_export(df: pd.DataFrame, records: list[dict]):
+    """Export data for ML pipelines."""
+    st.subheader("ML Pipeline Export")
+    st.markdown("Export data in formats ready for downstream ML pipelines and bulk download scripts.")
+
+    if df.empty:
+        st.info("No data to export.")
+        return
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        # CSV export
+        csv_data = df.to_csv(index=False)
+        st.download_button(
+            "Download CSV",
+            csv_data,
+            "microbiome_datasets.csv",
+            "text/csv",
+            help="Full dataset with all metadata"
+        )
+
+    with col2:
+        # Accession list for bulk download
+        if "run_accession" in df.columns:
+            accessions = df["run_accession"].dropna().tolist()
+            accession_text = "\n".join(accessions)
+            st.download_button(
+                "Download Accession List",
+                accession_text,
+                "accessions.txt",
+                "text/plain",
+                help="SRR accessions for sra-toolkit prefetch/fasterq-dump"
+            )
+
+    with col3:
+        # JSON export for ML
+        if records:
+            # Filter to banked only
+            banked_records = [r for r in records if r.get("ingestion_decision") == "AUTO-INGEST"]
+            if banked_records:
+                json_export = {
+                    "export_date": datetime.now().isoformat(),
+                    "total_datasets": len(banked_records),
+                    "datasets": [
+                        {
+                            "run_accession": r.get("run_accession"),
+                            "experiment_accession": r.get("accession"),
+                            "bioproject": r.get("bioproject_id"),
+                            "organism": r.get("organism"),
+                            "platform": r.get("platform"),
+                            "total_bases": r.get("total_bases"),
+                            "total_gb": r.get("total_gb"),
+                            "quality_score": r.get("total_score"),
+                            "disease_category": r.get("disease_category"),
+                            "study_type": r.get("primary_study_type"),
+                            "harmonized_metadata": r.get("harmonized_fields", {}),
+                            "sra_url": r.get("sra_url"),
+                            "run_url": r.get("run_url")
+                        }
+                        for r in banked_records
+                    ]
+                }
+                st.download_button(
+                    "Download JSON (Banked)",
+                    json.dumps(json_export, indent=2),
+                    "ingestion_manifest.json",
+                    "application/json",
+                    help="Structured JSON for ML pipeline ingestion"
+                )
+
+    # Infrastructure estimates
+    st.markdown("### Infrastructure Estimates")
+
+    if "estimated_size_gb" in df.columns:
+        total_size = df["estimated_size_gb"].sum()
+        banked_df = df[df["ingestion_decision"] == "AUTO-INGEST"] if "ingestion_decision" in df.columns else df
+        banked_size = banked_df["estimated_size_gb"].sum() if "estimated_size_gb" in banked_df.columns else 0
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Est. Download", f"{total_size:.1f} Gb")
+        with col2:
+            st.metric("Banked Est. Download", f"{banked_size:.1f} Gb")
+        with col3:
+            # S3 cost estimate (~$0.023/GB/month for standard)
+            monthly_cost = banked_size * 0.023
+            st.metric("Est. S3 Storage Cost", f"${monthly_cost:.2f}/mo")
+
+    # Bulk download command
+    st.markdown("### Bulk Download Command")
+    st.code("""# Using SRA Toolkit
+prefetch --option-file accessions.txt
+fasterq-dump --split-files *.sra
+
+# Or using parallel download
+cat accessions.txt | xargs -P 4 -I {} prefetch {}""", language="bash")
 
 
 def render_metadata_harmonization(df: pd.DataFrame, records: list[dict]):
@@ -725,7 +1049,7 @@ def render_metadata_harmonization(df: pd.DataFrame, records: list[dict]):
                 "Standard Field": standard,
                 "Mapped Aliases": ", ".join(aliases[:5]) + ("..." if len(aliases) > 5 else "")
             })
-        st.dataframe(pd.DataFrame(ontology_df), use_container_width=True)
+        st.dataframe(pd.DataFrame(ontology_df), width="stretch")
 
     # Show harmonization coverage
     if records:
@@ -741,7 +1065,7 @@ def render_metadata_harmonization(df: pd.DataFrame, records: list[dict]):
             for k, v in coverage.items()
         ]).sort_values("Datasets with Value", ascending=False)
 
-        st.dataframe(coverage_df, use_container_width=True)
+        st.dataframe(coverage_df, width="stretch")
 
 
 def main():
@@ -773,31 +1097,40 @@ def main():
         st.markdown("**Search Query**")
 
         # Preset queries for common use cases
+        st.markdown("**Quick Search**")
         preset = st.selectbox(
             "Preset Queries",
             [
                 "Custom",
+                "Gut-Brain Axis Studies",
+                "Depression & Microbiome",
+                "Anxiety & Gut Microbiome",
+                "IBS / IBD Studies",
+                "Pain & Microbiome",
                 "Nanopore Fecal Studies",
                 "Human Gut Microbiome",
                 "Clinical Stool Studies",
+                "Probiotic Trials",
+                "Prebiotic Studies",
                 "16S Amplicon (Any Platform)",
-                "Shotgun Metagenomics",
-                "Oral Microbiome",
-                "Skin Microbiome",
-                "Infant Gut Studies"
+                "Shotgun Metagenomics"
             ]
         )
 
         preset_queries = {
             "Custom": "",
+            "Gut-Brain Axis Studies": "(gut-brain[All Fields] OR gut brain axis[All Fields]) AND microbiome[All Fields]",
+            "Depression & Microbiome": "(depression[All Fields] OR depressive[All Fields]) AND (gut[All Fields] OR fecal[All Fields]) AND microbiome[All Fields]",
+            "Anxiety & Gut Microbiome": "anxiety[All Fields] AND (gut[All Fields] OR fecal[All Fields]) AND microbiome[All Fields]",
+            "IBS / IBD Studies": "(IBS[All Fields] OR IBD[All Fields] OR \"irritable bowel\"[All Fields]) AND microbiome[All Fields]",
+            "Pain & Microbiome": "(pain[All Fields] OR nociception[All Fields]) AND (gut[All Fields] OR microbiome[All Fields])",
             "Nanopore Fecal Studies": "fecal[All Fields] AND Oxford Nanopore[Platform]",
             "Human Gut Microbiome": "gut microbiome[All Fields] AND human[Organism]",
             "Clinical Stool Studies": "stool[All Fields] AND clinical[All Fields] AND microbiome[All Fields]",
+            "Probiotic Trials": "probiotic[All Fields] AND (clinical trial[All Fields] OR randomized[All Fields]) AND gut[All Fields]",
+            "Prebiotic Studies": "prebiotic[All Fields] AND (gut[All Fields] OR microbiome[All Fields])",
             "16S Amplicon (Any Platform)": "16S[All Fields] AND amplicon[All Fields] AND fecal[All Fields]",
-            "Shotgun Metagenomics": "metagenome[All Fields] AND WGS[Strategy] AND gut[All Fields]",
-            "Oral Microbiome": "oral[All Fields] AND microbiome[All Fields] AND human[Organism]",
-            "Skin Microbiome": "skin[All Fields] AND microbiome[All Fields] AND human[Organism]",
-            "Infant Gut Studies": "infant[All Fields] AND gut[All Fields] AND microbiome[All Fields]"
+            "Shotgun Metagenomics": "metagenome[All Fields] AND WGS[Strategy] AND gut[All Fields]"
         }
 
         default_query = preset_queries.get(preset, "")
@@ -822,7 +1155,7 @@ def main():
             }[x]
         )
 
-        search_button = st.button("Launch Discovery Agent", type="primary", use_container_width=True)
+        search_button = st.button("Launch Discovery Agent", type="primary", width="stretch")
 
         st.markdown("---")
         st.markdown("**About**")
@@ -868,8 +1201,9 @@ def main():
         render_executive_summary(df)
 
         # Tabs
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-            "Dataset Queue", "Quality Analytics", "Organisms", "Sample Types", "Metadata", "Nanopore"
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+            "Dataset Queue", "Quality Analytics", "Disease Priority", "Study Types",
+            "Insights", "ML Export", "Organisms", "Sample Types", "Metadata", "Nanopore"
         ])
 
         with tab1:
@@ -916,7 +1250,7 @@ def main():
             # Display table
             st.dataframe(
                 filtered_df,
-                use_container_width=True,
+                width="stretch",
                 height=400,
                 column_config={
                     "run_accession": st.column_config.TextColumn("Run ID", help="Unique SRR accession"),
@@ -989,15 +1323,27 @@ def main():
             render_quality_charts(df)
 
         with tab3:
-            render_organism_breakdown(df)
+            render_disease_prioritization(df, records)
 
         with tab4:
-            render_sample_type_analysis(df, records)
+            render_study_type_analysis(df)
 
         with tab5:
-            render_metadata_harmonization(df, records)
+            render_actionable_insights(df, records)
 
         with tab6:
+            render_ml_export(df, records)
+
+        with tab7:
+            render_organism_breakdown(df)
+
+        with tab8:
+            render_sample_type_analysis(df, records)
+
+        with tab9:
+            render_metadata_harmonization(df, records)
+
+        with tab10:
             st.subheader("Long-Read / Nanopore Analysis")
             long_read_df = df[df["seq_type"].str.contains("Long-Read", na=False)] if "seq_type" in df.columns else pd.DataFrame()
 
@@ -1027,9 +1373,9 @@ def main():
                         labels={"avg_read_length": "Avg Read Length (bp)", "total_gb": "Throughput (Gb)"},
                         color_discrete_map={"A": "#2ecc71", "B": "#3498db", "C": "#f39c12", "D": "#e74c3c"}
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
-                st.dataframe(long_read_df, use_container_width=True, height=300)
+                st.dataframe(long_read_df, width="stretch", height=300)
             else:
                 st.info("No long-read datasets in current results. Try: Oxford Nanopore[Platform]")
 

@@ -649,6 +649,37 @@ def render_dataset_browser(df: pd.DataFrame, records: list[dict]):
                 "text/csv"
             )
 
+    # Verified source links
+    st.markdown("### Verified NCBI Source Links")
+    st.caption("Each dataset links to its official NCBI record. All accessions retrieved via E-utilities API.")
+
+    for idx, row in filtered_df.head(10).iterrows():
+        run = row.get("run_accession", "")
+        run_url = row.get("run_url", "")
+        bioproject = row.get("bioproject_id", "")
+        bioproject_url = row.get("bioproject_url", "")
+        pubmed = row.get("pubmed_ids", "")
+        status = row.get("vault_status", "")
+        title = str(row.get("title", ""))[:60]
+        organism = row.get("organism", "N/A")
+        disease = row.get("disease_category", "")
+
+        links = []
+        if run_url and run:
+            links.append(f"[SRA: {run}]({run_url})")
+        if bioproject_url and bioproject:
+            links.append(f"[BioProject: {bioproject}]({bioproject_url})")
+        if pubmed:
+            for pmid in str(pubmed).split(",")[:2]:
+                pmid = pmid.strip()
+                if pmid:
+                    links.append(f"[PubMed: {pmid}](https://pubmed.ncbi.nlm.nih.gov/{pmid}/)")
+
+        status_color = "green" if status == "Banked" else "orange" if status == "Pending Review" else "red"
+        if links:
+            st.markdown(f"**[{status}]** {title}...")
+            st.markdown(f"*{organism}* | {disease} | {' | '.join(links)}")
+
 
 def render_disease_cohorts(df: pd.DataFrame):
     """Render the Disease Cohorts tab."""
@@ -789,6 +820,37 @@ def render_data_quality(df: pd.DataFrame):
             )
             fig.update_layout(height=300)
             st.plotly_chart(fig, use_container_width=True)
+
+    # Metadata harmonization section
+    st.markdown("### Metadata Harmonization")
+    st.markdown(
+        "Raw metadata from public repositories uses inconsistent labels. "
+        "This tool maps disparate field names to a standardized ontology."
+    )
+
+    with st.expander("View Harmonization Ontology"):
+        ontology_data = []
+        for field, aliases in METADATA_ONTOLOGY.items():
+            ontology_data.append({
+                "Standard Field": field.title(),
+                "Mapped Aliases": ", ".join(aliases[:4]) + ("..." if len(aliases) > 4 else "")
+            })
+        st.dataframe(pd.DataFrame(ontology_data), use_container_width=True, hide_index=True)
+
+    # Scoring criteria
+    st.markdown("### Quality Scoring Criteria")
+    st.markdown("""
+| Component | Max Points | What It Measures |
+|-----------|------------|------------------|
+| Sequencing Depth | 25 | Read count (short-read) or throughput in Gb (long-read) |
+| Read Length | 25 | Longer reads enable better taxonomic resolution |
+| Metadata Quality | 25 | Number of harmonized clinical/sample fields |
+| Clinical Relevance | 15 | Presence of disease, treatment, demographics |
+| Sample Type | 10 | Fecal/gut samples prioritized for microbiome research |
+| Publication | 5 | Linked PubMed ID adds credibility |
+
+**Status Thresholds:** Banked (70+) | Pending Review (55-69) | Not Suitable (<55)
+    """)
 
 
 def render_export_tab(df: pd.DataFrame, records: list[dict]):
@@ -963,6 +1025,32 @@ def main():
 
     with tab5:
         render_export_tab(df, records)
+
+    # Footer with references and data sources
+    st.markdown("---")
+    st.markdown("### Data Sources & References")
+    st.markdown("""
+All data is retrieved in real-time from official NCBI repositories. Every accession number displayed is real and verifiable.
+
+| Source | Description | Link |
+|--------|-------------|------|
+| NCBI SRA | Sequence Read Archive - primary source for all sequencing datasets | [ncbi.nlm.nih.gov/sra](https://www.ncbi.nlm.nih.gov/sra) |
+| NCBI E-utilities | API used for programmatic data retrieval | [E-utilities Documentation](https://www.ncbi.nlm.nih.gov/books/NBK25501/) |
+| NCBI BioProject | Study-level metadata and project information | [ncbi.nlm.nih.gov/bioproject](https://www.ncbi.nlm.nih.gov/bioproject/) |
+| PubMed | Linked scientific publications | [pubmed.ncbi.nlm.nih.gov](https://pubmed.ncbi.nlm.nih.gov/) |
+
+**Accession Types:**
+- **SRR** (e.g., SRR12345678): Unique sequencing run - one per dataset
+- **SRX** (e.g., SRX12345678): Experiment accession
+- **PRJNA** (e.g., PRJNA123456): BioProject - groups related samples from a study
+- **PMID** (e.g., 12345678): PubMed publication identifier
+    """)
+
+    st.caption(
+        "Click any accession link to verify on the official NCBI website. "
+        "Data quality scores are calculated based on sequencing depth, read length, "
+        "metadata completeness, and clinical relevance."
+    )
 
 
 if __name__ == "__main__":

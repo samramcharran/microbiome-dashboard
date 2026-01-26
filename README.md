@@ -1,5 +1,7 @@
 # Microbiome Dataset Discovery Dashboard
 
+**Live Demo:** https://microbiome-dashboard-samramcharran.streamlit.app
+
 A Streamlit application for searching, scoring, and analyzing microbiome datasets from NCBI Sequence Read Archive (SRA). Optimized for both short-read (Illumina) and long-read (Oxford Nanopore) sequencing technologies.
 
 ## Features

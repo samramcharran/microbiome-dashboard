@@ -2,7 +2,7 @@
 
 **Live Demo:** https://microbiome-dashboard-samramcharran.streamlit.app
 
-A Streamlit application for searching, scoring, and analyzing microbiome datasets from NCBI Sequence Read Archive (SRA). Optimized for both short-read (Illumina) and long-read (Oxford Nanopore) sequencing technologies. Built for Holobiome's genome banking, metadata curation, and strategic data prioritization workflows.
+A Streamlit application for searching, scoring, and analyzing microbiome datasets from NCBI Sequence Read Archive (SRA). Optimized for both short-read (Illumina) and long-read (Oxford Nanopore) sequencing technologies. Built for genome banking, metadata curation, and strategic data prioritization workflows.
 
 ## Features
 

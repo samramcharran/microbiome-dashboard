@@ -112,16 +112,27 @@ Parameters:
 | **Data Quality** | Vault status, access type, sequencing technology, sample type distributions |
 | **Export** | Download options for CSV, JSON, accession lists, and watchlist |
 
-## Role-Based Search Presets
+## How It Works
 
-The sidebar dropdown "I am from..." provides role-specific preset queries. All roles have access to all features - the presets just provide relevant starting searches:
+### Two Roles
 
-| Role | What You Can Search For |
-|------|------------------------|
-| **Leadership** | All gut microbiome data, high-quality public datasets |
-| **Wet Lab** | Depression & anxiety, pain & fibromyalgia, IBS & IBD, long-read sequencing, shotgun metagenomics |
-| **Computational** | Cohorts, clinical trial data |
-| **Partnerships** | Clinical trials, probiotic studies |
+| Role | Default View | Who it's for |
+|------|--------------|--------------|
+| **Researcher** | Dataset Browser | Scientists, computational biologists, anyone analyzing data |
+| **Leadership** | Mission Control | Executives, strategic planning, portfolio overview |
+
+### Search Options (Same for everyone)
+
+| Search For | What It Finds |
+|------------|---------------|
+| **All Available Data** | All human gut microbiome datasets |
+| **Mental Health** | Depression, anxiety, stress, autism, Parkinson's |
+| **Pain Conditions** | Fibromyalgia, chronic pain, neuropathy |
+| **Digestive Health** | IBS, IBD, Crohn's, colitis |
+| **Metabolic Health** | Obesity, diabetes, metabolic syndrome |
+| **Long-Read Data** | Nanopore and PacBio sequencing |
+| **Large Studies** | Cohorts with 100+ samples |
+| **Clinical Trials** | Intervention and treatment studies |
 
 ## Quality Scoring System
 

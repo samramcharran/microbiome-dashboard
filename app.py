@@ -73,28 +73,20 @@ DISEASE_BURDEN_WEIGHTS = {
     "Unclassified": 1
 }
 
-# Role-based preset queries (simplified and user-friendly)
-ROLE_PRESETS = {
-    "Leadership": {
-        "All Gut Microbiome Data": "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]",
-        "High-Quality Public Datasets": "gut microbiome[All Fields] AND human[Organism]",
-    },
-    "Wet Lab": {
-        "Depression & Anxiety": "(depression[All Fields] OR anxiety[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
-        "Pain & Fibromyalgia": "(pain[All Fields] OR fibromyalgia[All Fields]) AND microbiome[All Fields]",
-        "IBS & IBD": "(IBS[All Fields] OR IBD[All Fields] OR colitis[All Fields]) AND microbiome[All Fields]",
-        "Long-Read Sequencing": "fecal[All Fields] AND Oxford Nanopore[Platform]",
-        "Shotgun Metagenomics": "(shotgun[All Fields] OR metagenome[All Fields]) AND fecal[All Fields] AND human[Organism]",
-    },
-    "Computational": {
-        "Cohorts": "stool[All Fields] AND cohort[All Fields] AND microbiome[All Fields]",
-        "Clinical Trial Data": "gut microbiome[All Fields] AND human[Organism] AND clinical[All Fields]",
-    },
-    "Partnerships": {
-        "Clinical Trials": "(clinical trial[All Fields] OR randomized[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
-        "Probiotic Studies": "probiotic[All Fields] AND (gut[All Fields] OR fecal[All Fields])",
-    },
+# Search presets - same options for all roles
+SEARCH_PRESETS = {
+    "All Available Data": "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]",
+    "Mental Health": "(depression[All Fields] OR anxiety[All Fields] OR stress[All Fields] OR autism[All Fields] OR parkinson[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
+    "Pain Conditions": "(pain[All Fields] OR fibromyalgia[All Fields] OR chronic pain[All Fields] OR neuropathy[All Fields]) AND microbiome[All Fields]",
+    "Digestive Health": "(IBS[All Fields] OR IBD[All Fields] OR crohn[All Fields] OR colitis[All Fields]) AND microbiome[All Fields]",
+    "Metabolic Health": "(obesity[All Fields] OR diabetes[All Fields] OR metabolic[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
+    "Long-Read Data": "(fecal[All Fields] OR stool[All Fields]) AND (Oxford Nanopore[Platform] OR PacBio[Platform])",
+    "Large Studies": "stool[All Fields] AND cohort[All Fields] AND microbiome[All Fields]",
+    "Clinical Trials": "(clinical trial[All Fields] OR randomized[All Fields] OR intervention[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
 }
+
+# Role determines default tab (Researcher -> Dataset Browser, Leadership -> Mission Control)
+ROLES = ["Researcher", "Leadership"]
 
 
 def parse_flexible_date(date_str: str) -> Optional[datetime]:
@@ -1420,33 +1412,29 @@ def main():
 
     # Sidebar
     with st.sidebar:
-        st.markdown("### Search")
+        # Role selection
+        default_role_idx = ROLES.index(url_role) if url_role in ROLES else 0
+        role = st.selectbox("I am a", ROLES, index=default_role_idx)
 
-        # Role-based presets
-        role_options = list(ROLE_PRESETS.keys())
-        default_role_idx = role_options.index(url_role) if url_role in role_options else 0
-        role = st.selectbox("I am from...", role_options, index=default_role_idx)
-
-        preset_options = list(ROLE_PRESETS[role].keys())
-        all_preset_options = ["Custom Query"] + preset_options
-        # Safely get preset index (default to 0 if not found)
+        # Search presets - same for everyone
+        preset_options = list(SEARCH_PRESETS.keys())
+        all_preset_options = preset_options + ["Custom Search"]
         try:
             default_preset_idx = all_preset_options.index(url_preset) if url_preset in all_preset_options else 0
         except (ValueError, KeyError):
             default_preset_idx = 0
-        preset = st.selectbox("Looking for...", all_preset_options, index=default_preset_idx)
+        preset = st.selectbox("looking for", all_preset_options, index=default_preset_idx)
 
-        if preset == "Custom Query":
+        if preset == "Custom Search":
             default_query = url_query if url_query else "fecal[All Fields] AND microbiome[All Fields]"
             query = st.text_area(
-                "Query",
+                "Custom query",
                 value=default_query,
                 height=80,
                 help="NCBI Entrez syntax"
             )
         else:
-            query = ROLE_PRESETS[role][preset]
-            st.code(query, language=None)
+            query = SEARCH_PRESETS[preset]
 
         default_max = int(url_max) if url_max and url_max.isdigit() else 50
         max_results = st.slider("Max results", 10, 100, default_max, 10)
@@ -1531,28 +1519,40 @@ A tool for discovering and evaluating microbiome sequencing datasets from public
     # Key metrics
     render_key_metrics(df)
 
-    # Tabs (Overview first, then specialized views)
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "Overview", "Mission Control", "Dataset Browser", "Disease Cohorts", "Data Quality", "Export"
-    ])
-
-    with tab1:
-        render_overview_tab(df, records)
-
-    with tab2:
-        render_mission_control(df, records)
-
-    with tab3:
-        render_dataset_browser(df, records)
-
-    with tab4:
-        render_disease_cohorts(df)
-
-    with tab5:
-        render_data_quality(df)
-
-    with tab6:
-        render_export_tab(df, records)
+    # Tabs - order based on role
+    if role == "Leadership":
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            "Mission Control", "Overview", "Dataset Browser", "Disease Cohorts", "Data Quality", "Export"
+        ])
+        with tab1:
+            render_mission_control(df, records)
+        with tab2:
+            render_overview_tab(df, records)
+        with tab3:
+            render_dataset_browser(df, records)
+        with tab4:
+            render_disease_cohorts(df)
+        with tab5:
+            render_data_quality(df)
+        with tab6:
+            render_export_tab(df, records)
+    else:
+        # Researcher - Dataset Browser first
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            "Dataset Browser", "Overview", "Mission Control", "Disease Cohorts", "Data Quality", "Export"
+        ])
+        with tab1:
+            render_dataset_browser(df, records)
+        with tab2:
+            render_overview_tab(df, records)
+        with tab3:
+            render_mission_control(df, records)
+        with tab4:
+            render_disease_cohorts(df)
+        with tab5:
+            render_data_quality(df)
+        with tab6:
+            render_export_tab(df, records)
 
     # Footer
     st.markdown("---")

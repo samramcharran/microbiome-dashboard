@@ -112,17 +112,16 @@ Parameters:
 | **Data Quality** | Vault status, access type, sequencing technology, sample type distributions |
 | **Export** | Download options for CSV, JSON, accession lists, and watchlist |
 
-## Role-Based Access
+## Role-Based Search Presets
 
 The sidebar dropdown "I am from..." provides role-specific preset queries. All roles have access to all features - the presets just provide relevant starting searches:
 
-| Role | Preset Queries | Typical Use Case |
-|------|---------------|------------------|
-| **Leadership** | Strategic Overview, High-Value Public Data | Executive decision-making, portfolio overview |
-| **Wet Lab** | Cultivation Candidates (Long-Read), Strain-Level Resolution | Identifying datasets for strain isolation |
-| **Computational** | ML Training Data, Large Cohorts | Finding datasets for bioinformatics analysis |
-| **BD / Partnerships** | Collaboration Targets, Probiotic Research | Identifying partnership opportunities |
-| **Disease Focus** | Depression, Anxiety, Pain, IBS/IBD Studies | Disease-specific dataset discovery |
+| Role | What You Can Search For |
+|------|------------------------|
+| **Leadership** | All gut microbiome data, high-quality public datasets |
+| **Research** | Depression & anxiety, pain & fibromyalgia, IBS & IBD, long-read sequencing, shotgun metagenomics |
+| **Data Science** | Large patient cohorts, clinical trial data |
+| **Partnerships** | Clinical trials, probiotic studies |
 
 ## Quality Scoring System
 

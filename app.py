@@ -73,30 +73,27 @@ DISEASE_BURDEN_WEIGHTS = {
     "Unclassified": 1
 }
 
-# Role-based preset queries
+# Role-based preset queries (simplified and user-friendly)
 ROLE_PRESETS = {
     "Leadership": {
-        "Strategic Overview": "(gut-brain[All Fields] OR depression[All Fields] OR anxiety[All Fields] OR pain[All Fields]) AND fecal[All Fields] AND microbiome[All Fields]",
-        "High-Value Public Data": "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]",
+        "All Gut Microbiome Data": "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]",
+        "High-Quality Public Datasets": "gut microbiome[All Fields] AND human[Organism]",
     },
-    "Wet Lab": {
-        "Cultivation Candidates (Long-Read)": "fecal[All Fields] AND Oxford Nanopore[Platform]",
-        "Strain-Level Resolution": "(shotgun[All Fields] OR metagenome[All Fields]) AND fecal[All Fields] AND human[Organism]",
+    "Research": {
+        "Depression & Anxiety": "(depression[All Fields] OR anxiety[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
+        "Pain & Fibromyalgia": "(pain[All Fields] OR fibromyalgia[All Fields]) AND microbiome[All Fields]",
+        "IBS & IBD": "(IBS[All Fields] OR IBD[All Fields] OR colitis[All Fields]) AND microbiome[All Fields]",
+        "Long-Read Sequencing": "fecal[All Fields] AND Oxford Nanopore[Platform]",
+        "Shotgun Metagenomics": "(shotgun[All Fields] OR metagenome[All Fields]) AND fecal[All Fields] AND human[Organism]",
     },
-    "Computational": {
-        "ML Training Data": "gut microbiome[All Fields] AND human[Organism] AND clinical[All Fields]",
-        "Large Cohorts": "stool[All Fields] AND cohort[All Fields] AND microbiome[All Fields]",
+    "Data Science": {
+        "Large Patient Cohorts": "stool[All Fields] AND cohort[All Fields] AND microbiome[All Fields]",
+        "Clinical Trial Data": "gut microbiome[All Fields] AND human[Organism] AND clinical[All Fields]",
     },
-    "BD / Partnerships": {
-        "Collaboration Targets": "(clinical trial[All Fields] OR randomized[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
-        "Probiotic Research": "probiotic[All Fields] AND (gut[All Fields] OR fecal[All Fields])",
+    "Partnerships": {
+        "Clinical Trials": "(clinical trial[All Fields] OR randomized[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
+        "Probiotic Studies": "probiotic[All Fields] AND (gut[All Fields] OR fecal[All Fields])",
     },
-    "Disease Focus": {
-        "Depression Studies": "(depression[All Fields] OR depressive[All Fields]) AND (gut[All Fields] OR fecal[All Fields]) AND microbiome[All Fields]",
-        "Anxiety Studies": "anxiety[All Fields] AND (gut[All Fields] OR fecal[All Fields]) AND microbiome[All Fields]",
-        "Pain Research": "(pain[All Fields] OR fibromyalgia[All Fields] OR nociception[All Fields]) AND microbiome[All Fields]",
-        "IBS / IBD": "(IBS[All Fields] OR IBD[All Fields] OR \"irritable bowel\"[All Fields]) AND microbiome[All Fields]",
-    }
 }
 
 

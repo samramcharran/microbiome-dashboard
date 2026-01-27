@@ -1764,140 +1764,119 @@ def main():
     # LANDING PAGE
     # =====================
     if not st.session_state.has_searched:
-        # Add colorful gradient background and styling
+        # Compact styling for single-screen layout
         st.markdown("""
         <style>
         .stApp {
-            background: linear-gradient(135deg, #e8f5e9 0%, #e3f2fd 50%, #f3e5f5 100%);
+            background: linear-gradient(135deg, #f0f9f0 0%, #e8f4fc 50%, #f5f0f9 100%);
         }
-        .landing-title {
-            text-align: center;
-            font-size: 3rem;
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+        .title-text {
+            font-size: 2.2rem;
             font-weight: 700;
-            background: linear-gradient(90deg, #2e7d32, #1565c0, #7b1fa2);
+            background: linear-gradient(90deg, #2e7d32, #1565c0);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin-bottom: 0.5rem;
         }
-        .landing-subtitle {
+        .subtitle-text {
             text-align: center;
             color: #666;
-            font-size: 1.2rem;
-            margin-bottom: 2rem;
+            font-size: 1rem;
+            margin-bottom: 15px;
         }
-        .feature-card {
-            text-align: center;
-            padding: 1.5rem 1rem;
-            border-radius: 16px;
-            margin: 0.5rem;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            cursor: default;
+        .feature-row {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
         }
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-        .feature-card-1 {
-            background: linear-gradient(135deg, #4CAF50, #81C784);
-            color: white;
+        .feature-item svg {
+            flex-shrink: 0;
         }
-        .feature-card-2 {
-            background: linear-gradient(135deg, #2196F3, #64B5F6);
-            color: white;
-        }
-        .feature-card-3 {
-            background: linear-gradient(135deg, #9C27B0, #BA68C8);
-            color: white;
-        }
-        .feature-card-4 {
-            background: linear-gradient(135deg, #FF5722, #FF8A65);
-            color: white;
-        }
-        .feature-icon-large {
-            font-size: 2.5rem;
-            margin-bottom: 0.75rem;
-            display: block;
-        }
-        .feature-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-        }
-        .feature-desc {
+        .feature-text {
             font-size: 0.85rem;
-            opacity: 0.9;
+            font-weight: 500;
+            color: #333;
         }
         </style>
         """, unsafe_allow_html=True)
 
-        # Animated microbe header
+        # Compact header with microbe icon and title side by side
         st.markdown("""
-        <div style="text-align: center; padding: 20px;">
-            <svg width="100" height="100" viewBox="0 0 120 120" style="margin-bottom: 10px;">
+        <div class="header-row">
+            <svg width="60" height="60" viewBox="0 0 120 120">
                 <style>
-                    .hero-microbe {{ animation: pulse 2s ease-in-out infinite; }}
-                    .microbe-float {{ animation: float 3s ease-in-out infinite; }}
-                    .microbe-float-delayed {{ animation: float 3s ease-in-out infinite; animation-delay: 1s; }}
-                    @keyframes pulse {{
-                        0%, 100% {{ transform: scale(1); opacity: 0.9; }}
-                        50% {{ transform: scale(1.05); opacity: 1; }}
-                    }}
-                    @keyframes float {{
-                        0%, 100% {{ transform: translateY(0px); }}
-                        50% {{ transform: translateY(-8px); }}
-                    }}
+                    .m1 {{ animation: pulse 2s ease-in-out infinite; }}
+                    @keyframes pulse {{ 0%, 100% {{ opacity: 0.9; }} 50% {{ opacity: 1; }} }}
                 </style>
-                <ellipse class="hero-microbe" cx="60" cy="60" rx="40" ry="28" fill="#4CAF50"/>
-                <ellipse cx="45" cy="52" rx="6" ry="6" fill="white" opacity="0.7"/>
-                <ellipse cx="72" cy="48" rx="4" ry="4" fill="white" opacity="0.5"/>
-                <ellipse class="microbe-float" cx="25" cy="60" rx="12" ry="8" fill="#66BB6A"/>
-                <ellipse class="microbe-float-delayed" cx="95" cy="60" rx="12" ry="8" fill="#66BB6A"/>
-                <ellipse cx="60" cy="75" rx="15" ry="6" fill="#81C784" opacity="0.6"/>
+                <ellipse class="m1" cx="60" cy="60" rx="35" ry="25" fill="#4CAF50"/>
+                <ellipse cx="45" cy="52" rx="5" ry="5" fill="white" opacity="0.7"/>
+                <ellipse cx="70" cy="50" rx="3" ry="3" fill="white" opacity="0.5"/>
+                <circle cx="25" cy="60" r="10" fill="#66BB6A"/>
+                <circle cx="95" cy="60" r="10" fill="#66BB6A"/>
             </svg>
+            <span class="title-text">Microbiome Dataset Discovery</span>
         </div>
-        <h1 class="landing-title">Microbiome Dataset Discovery</h1>
-        <p class="landing-subtitle">Search and explore microbiome sequencing datasets from NCBI SRA</p>
+        <p class="subtitle-text">Search microbiome sequencing datasets from NCBI SRA</p>
         """, unsafe_allow_html=True)
 
-        # Feature highlights with colorful cards
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.markdown("""
-            <div class="feature-card feature-card-1">
-                <span class="feature-icon-large">🔬</span>
-                <div class="feature-title">10,000+ Datasets</div>
-                <div class="feature-desc">Public repositories</div>
+        # Compact feature pills with SVG icons
+        st.markdown("""
+        <div class="feature-row">
+            <div class="feature-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="#4CAF50" stroke-width="2"/>
+                    <circle cx="12" cy="12" r="4" fill="#4CAF50"/>
+                    <line x1="12" y1="2" x2="12" y2="6" stroke="#4CAF50" stroke-width="2"/>
+                    <line x1="12" y1="18" x2="12" y2="22" stroke="#4CAF50" stroke-width="2"/>
+                    <line x1="2" y1="12" x2="6" y2="12" stroke="#4CAF50" stroke-width="2"/>
+                    <line x1="18" y1="12" x2="22" y2="12" stroke="#4CAF50" stroke-width="2"/>
+                </svg>
+                <span class="feature-text">10,000+ Datasets</span>
             </div>
-            """, unsafe_allow_html=True)
-        with col2:
-            st.markdown("""
-            <div class="feature-card feature-card-2">
-                <span class="feature-icon-large">📊</span>
-                <div class="feature-title">Quality Scoring</div>
-                <div class="feature-desc">A-F grading system</div>
+            <div class="feature-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="14" width="4" height="8" fill="#2196F3"/>
+                    <rect x="10" y="8" width="4" height="14" fill="#2196F3"/>
+                    <rect x="17" y="3" width="4" height="19" fill="#2196F3"/>
+                </svg>
+                <span class="feature-text">Quality Grading</span>
             </div>
-            """, unsafe_allow_html=True)
-        with col3:
-            st.markdown("""
-            <div class="feature-card feature-card-3">
-                <span class="feature-icon-large">🧬</span>
-                <div class="feature-title">Read Detection</div>
-                <div class="feature-desc">Long & short read</div>
+            <div class="feature-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C12 2 8 6 8 12C8 18 12 22 12 22C12 22 16 18 16 12C16 6 12 2 12 2Z" stroke="#9C27B0" stroke-width="2" fill="none"/>
+                    <circle cx="12" cy="12" r="3" fill="#9C27B0"/>
+                </svg>
+                <span class="feature-text">Read Detection</span>
             </div>
-            """, unsafe_allow_html=True)
-        with col4:
-            st.markdown("""
-            <div class="feature-card feature-card-4">
-                <span class="feature-icon-large">🏥</span>
-                <div class="feature-title">Disease Focus</div>
-                <div class="feature-desc">Gut-brain & more</div>
+            <div class="feature-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 4C8 4 4 8 4 12C4 16 8 20 12 20C16 20 20 16 20 12" stroke="#FF5722" stroke-width="2"/>
+                    <circle cx="12" cy="12" r="4" fill="#FF5722"/>
+                    <line x1="18" y1="6" x2="22" y2="2" stroke="#FF5722" stroke-width="2"/>
+                </svg>
+                <span class="feature-text">Disease Focus</span>
             </div>
-            """, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
 
-        st.markdown("<br><br>", unsafe_allow_html=True)
-
-        # Centered selection form - no card wrapper
+        # Centered selection form - compact
         col1, col2, col3 = st.columns([1, 2, 1])
 
         with col2:
@@ -1909,8 +1888,6 @@ def main():
                 index=0,
                 key="landing_role"
             )
-
-            st.markdown("<br>", unsafe_allow_html=True)
 
             if role == "Leadership":
                 # Leadership sees dashboard focus options
@@ -1961,9 +1938,7 @@ def main():
                     query = RESEARCHER_SEARCHES.get(search_option, RESEARCHER_SEARCHES["All Available Data"])
                 max_default = 500  # Higher default for researchers
 
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            # Max results - higher limit for researchers (10,000), lower for leadership (500)
+            # Max results - compact slider
             max_limit = 10000 if role == "Researcher" else 500
             max_results = st.slider(
                 "Max results",
@@ -1971,11 +1946,8 @@ def main():
                 max_value=max_limit,
                 value=min(max_default, max_limit),
                 step=10 if max_limit <= 500 else 100,
-                key="landing_max",
-                help=f"Fetch up to {max_limit:,} datasets from NCBI"
+                key="landing_max"
             )
-
-            st.markdown("<br>", unsafe_allow_html=True)
 
             # Search button
             if st.button("Search Datasets", type="primary", use_container_width=True, key="landing_search_btn"):
@@ -2012,12 +1984,8 @@ def main():
                     loading_placeholder.empty()
                     st.warning("No datasets found. Try adjusting your search.")
 
-        # Footer on landing page
-        st.markdown("<br><br><br>", unsafe_allow_html=True)
-        st.markdown("---")
-        col1, col2, col3 = st.columns(3)
-        with col2:
-            st.caption("Data from [NCBI SRA](https://www.ncbi.nlm.nih.gov/sra)")
+        # Compact footer
+        st.markdown("<div style='text-align: center; margin-top: 20px;'><small style='color: #888;'>Data from <a href='https://www.ncbi.nlm.nih.gov/sra' target='_blank'>NCBI SRA</a></small></div>", unsafe_allow_html=True)
 
         return  # Stop here if on landing page
 

@@ -1000,7 +1000,8 @@ def render_mission_control(df: pd.DataFrame, records: list[dict]):
         render_disease_burden_chart(df)
 
         # Category breakdown
-        if "disease_category" in df.columns:
+        required_cols = ["disease_category", "run_accession", "total_gb", "quality_score"]
+        if all(col in df.columns for col in required_cols) and not df.empty:
             st.markdown("---")
             st.markdown("##### Category Details")
             cat_summary = df.groupby("disease_category").agg({

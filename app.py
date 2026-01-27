@@ -73,20 +73,84 @@ DISEASE_BURDEN_WEIGHTS = {
     "Unclassified": 1
 }
 
-# Search presets - same options for all roles
-SEARCH_PRESETS = {
-    "All Available Data": "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]",
+# Leadership dashboard views (not searches - these control what metrics to show)
+LEADERSHIP_VIEWS = [
+    "Banking Progress",
+    "Disease Prioritization",
+    "Data Quality",
+    "Access Status",
+    "Infrastructure",
+]
+
+# Researcher search options - organized by category
+RESEARCHER_SEARCHES = {
+    # By Condition
     "Mental Health": "(depression[All Fields] OR anxiety[All Fields] OR stress[All Fields] OR autism[All Fields] OR parkinson[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
     "Pain Conditions": "(pain[All Fields] OR fibromyalgia[All Fields] OR chronic pain[All Fields] OR neuropathy[All Fields]) AND microbiome[All Fields]",
     "Digestive Health": "(IBS[All Fields] OR IBD[All Fields] OR crohn[All Fields] OR colitis[All Fields]) AND microbiome[All Fields]",
     "Metabolic Health": "(obesity[All Fields] OR diabetes[All Fields] OR metabolic[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
-    "Long-Read Data": "(fecal[All Fields] OR stool[All Fields]) AND (Oxford Nanopore[Platform] OR PacBio[Platform])",
-    "Large Studies": "stool[All Fields] AND cohort[All Fields] AND microbiome[All Fields]",
+    # By Data Type
+    "Long-Read Sequencing": "(fecal[All Fields] OR stool[All Fields]) AND (Oxford Nanopore[Platform] OR PacBio[Platform])",
+    "Shotgun Metagenomics": "(shotgun[All Fields] OR metagenome[All Fields] OR WGS[All Fields]) AND fecal[All Fields] AND human[Organism]",
+    "16S Amplicon": "16S[All Fields] AND (fecal[All Fields] OR stool[All Fields]) AND human[Organism]",
+    # By Quality & Access
+    "High-Quality Only": "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]",  # Filtered post-search
+    "Public Datasets": "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]",  # Filtered post-search
+    # By Study Design
+    "Large Cohorts": "stool[All Fields] AND cohort[All Fields] AND microbiome[All Fields]",
     "Clinical Trials": "(clinical trial[All Fields] OR randomized[All Fields] OR intervention[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
+    # Browse All
+    "All Available Data": "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]",
 }
 
-# Role determines default tab (Researcher -> Dataset Browser, Leadership -> Mission Control)
+# Roles
 ROLES = ["Researcher", "Leadership"]
+
+# Microbiome loading messages
+LOADING_MESSAGES = [
+    "Exploring the gut microbiome...",
+    "Analyzing microbial communities...",
+    "Discovering beneficial bacteria...",
+    "Mapping the microbiome landscape...",
+    "Searching for microbial diversity...",
+]
+
+
+def render_loading_animation(message: str = "Loading..."):
+    """Render a microbiome-themed loading animation."""
+    import random
+
+    # SVG animation of bacteria/microbes
+    microbe_svg = """
+    <div style="text-align: center; padding: 40px;">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+            <style>
+                .microbe { animation: float 2s ease-in-out infinite; }
+                .microbe1 { animation-delay: 0s; }
+                .microbe2 { animation-delay: 0.3s; }
+                .microbe3 { animation-delay: 0.6s; }
+                .microbe4 { animation-delay: 0.9s; }
+                .microbe5 { animation-delay: 1.2s; }
+                @keyframes float {
+                    0%, 100% { transform: translateY(0px); opacity: 0.7; }
+                    50% { transform: translateY(-10px); opacity: 1; }
+                }
+            </style>
+            <!-- Bacteria shapes -->
+            <ellipse class="microbe microbe1" cx="30" cy="60" rx="12" ry="8" fill="#4CAF50"/>
+            <ellipse class="microbe microbe2" cx="60" cy="40" rx="10" ry="6" fill="#8BC34A"/>
+            <ellipse class="microbe microbe3" cx="90" cy="55" rx="11" ry="7" fill="#66BB6A"/>
+            <ellipse class="microbe microbe4" cx="45" cy="85" rx="9" ry="6" fill="#81C784"/>
+            <ellipse class="microbe microbe5" cx="75" cy="80" rx="10" ry="7" fill="#A5D6A7"/>
+            <!-- Small dots for flagella effect -->
+            <circle class="microbe microbe1" cx="18" cy="60" r="3" fill="#4CAF50"/>
+            <circle class="microbe microbe2" cx="50" cy="38" r="2" fill="#8BC34A"/>
+            <circle class="microbe microbe3" cx="101" cy="53" r="3" fill="#66BB6A"/>
+        </svg>
+        <p style="color: #666; font-size: 16px; margin-top: 20px;">{message}</p>
+    </div>
+    """
+    return microbe_svg.format(message=message)
 
 
 def parse_flexible_date(date_str: str) -> Optional[datetime]:
@@ -833,54 +897,266 @@ def render_strategic_recommendations(df: pd.DataFrame, records: list[dict]):
 def render_mission_control(df: pd.DataFrame, records: list[dict]):
     """Render the Mission Control leadership dashboard."""
     st.markdown("### Mission Control")
-    st.caption("Holobiome Leadership Dashboard - Strategic overview of genome banking operations")
+
+    # Get the selected leadership view
+    current_view = st.session_state.get("leadership_view", "Banking Progress")
+    st.caption(f"Holobiome Leadership Dashboard - Viewing: **{current_view}**")
 
     if df.empty:
         st.info("Run a search to populate the Mission Control dashboard.")
         return
 
-    # Top Row - Strategic Metrics
-    st.markdown("#### Strategic Metrics")
-    col1, col2, col3, col4, col5 = st.columns(5)
-
+    # Calculate common metrics
     total = len(df)
     banked = len(df[df["vault_status"] == "Banked"]) if "vault_status" in df.columns else 0
     pending = len(df[df["vault_status"] == "Pending Review"]) if "vault_status" in df.columns else 0
+    not_suitable = len(df[df["vault_status"] == "Not Suitable"]) if "vault_status" in df.columns else 0
     gut_brain = int(df["gut_brain_relevant"].sum()) if "gut_brain_relevant" in df.columns else 0
     total_gb = df["total_gb"].sum() if "total_gb" in df.columns else 0
+    public_count = len(df[df["access_type"] == "Public"]) if "access_type" in df.columns else 0
+    private_count = len(df[df["access_type"] == "Private (Requires Access)"]) if "access_type" in df.columns else 0
 
-    with col1:
-        st.metric("Genomes Identified", total, help="Total datasets discovered")
+    # ======================
+    # BANKING PROGRESS VIEW
+    # ======================
+    if current_view == "Banking Progress":
+        st.markdown("#### Banking Progress - Live Status")
 
-    with col2:
-        banked_pct = (banked / total * 100) if total > 0 else 0
-        st.metric("Genomes Banked", banked, delta=f"{banked_pct:.0f}%", help="High-quality datasets ready for vault")
+        # Top metrics row
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1:
+            st.metric("Identified", total, help="Total datasets discovered")
+        with col2:
+            banked_pct = (banked / total * 100) if total > 0 else 0
+            st.metric("Banked", banked, delta=f"{banked_pct:.0f}%", delta_color="normal")
+        with col3:
+            st.metric("Pending Review", pending)
+        with col4:
+            st.metric("Not Suitable", not_suitable, delta_color="inverse")
+        with col5:
+            st.metric("Total Volume", f"{total_gb:.1f} Gb")
 
-    with col3:
-        st.metric("Pending Review", pending, help="Datasets requiring manual review")
+        st.markdown("---")
 
-    with col4:
-        st.metric("Gut-Brain Relevant", gut_brain, help="Datasets relevant to gut-brain axis research")
+        # Progress visualization
+        col1, col2 = st.columns(2)
 
-    with col5:
-        st.metric("Total Data Volume", f"{total_gb:.1f} Gb", help="Combined data volume")
+        with col1:
+            st.markdown("##### Banking Pipeline")
+            if total > 0:
+                fig = go.Figure(go.Funnel(
+                    y=["Discovered", "Banked", "Pending", "Not Suitable"],
+                    x=[total, banked, pending, not_suitable],
+                    textinfo="value+percent initial"
+                ))
+                fig.update_layout(height=300, margin=dict(l=20, r=20, t=20, b=20))
+                st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("---")
+        with col2:
+            st.markdown("##### Status Breakdown")
+            if "vault_status" in df.columns:
+                status_counts = df["vault_status"].value_counts()
+                colors = {"Banked": "#2ecc71", "Pending Review": "#f39c12", "Not Suitable": "#e74c3c"}
+                fig = px.pie(
+                    values=status_counts.values,
+                    names=status_counts.index,
+                    color=status_counts.index,
+                    color_discrete_map=colors
+                )
+                fig.update_layout(height=300, margin=dict(l=20, r=20, t=20, b=20))
+                st.plotly_chart(fig, use_container_width=True)
 
-    # Middle Row - Visualizations
-    col1, col2 = st.columns(2)
+        # Action items
+        st.markdown("---")
+        st.markdown("##### Action Items")
+        if pending > 0:
+            st.warning(f"**{pending} datasets** require manual review before banking decision")
+        if banked >= 5:
+            st.success(f"**{banked} datasets** ready for bulk vault ingestion")
+        if banked == 0:
+            st.error("No datasets meet banking criteria - consider expanding search")
 
-    with col1:
+    # ===========================
+    # DISEASE PRIORITIZATION VIEW
+    # ===========================
+    elif current_view == "Disease Prioritization":
+        st.markdown("#### Disease Prioritization - Strategic Focus Areas")
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Gut-Brain Relevant", gut_brain, help="Priority research area")
+        with col2:
+            if "disease_category" in df.columns:
+                top_cat = df["disease_category"].value_counts().head(1)
+                top_name = top_cat.index[0] if not top_cat.empty else "N/A"
+                top_count = top_cat.values[0] if not top_cat.empty else 0
+                st.metric("Top Category", top_name, delta=f"{top_count} datasets")
+        with col3:
+            categories = df["disease_category"].nunique() if "disease_category" in df.columns else 0
+            st.metric("Disease Categories", categories)
+
+        st.markdown("---")
+
+        # Disease burden chart (full width)
         render_disease_burden_chart(df)
 
-    with col2:
-        render_team_readiness(df)
-        st.markdown("")
+        # Category breakdown
+        if "disease_category" in df.columns:
+            st.markdown("---")
+            st.markdown("##### Category Details")
+            cat_summary = df.groupby("disease_category").agg({
+                "run_accession": "count",
+                "total_gb": "sum",
+                "quality_score": "mean"
+            }).rename(columns={
+                "run_accession": "Datasets",
+                "total_gb": "Data (Gb)",
+                "quality_score": "Avg Score"
+            }).round(1)
+            cat_summary = cat_summary.sort_values("Datasets", ascending=False)
+            st.dataframe(cat_summary, use_container_width=True)
+
+    # ===================
+    # DATA QUALITY VIEW
+    # ===================
+    elif current_view == "Data Quality":
+        st.markdown("#### Data Quality - Scoring Overview")
+
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            avg_score = df["quality_score"].mean() if "quality_score" in df.columns else 0
+            st.metric("Avg Quality Score", f"{avg_score:.0f}/100")
+        with col2:
+            high_quality = len(df[df["quality_score"] >= 70]) if "quality_score" in df.columns else 0
+            st.metric("High Quality (70+)", high_quality)
+        with col3:
+            with_pubmed = len(df[df["pubmed_id"].notna() & (df["pubmed_id"] != "")]) if "pubmed_id" in df.columns else 0
+            st.metric("With Publications", with_pubmed)
+        with col4:
+            st.metric("Total Volume", f"{total_gb:.1f} Gb")
+
+        st.markdown("---")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("##### Quality Distribution")
+            if "quality_score" in df.columns:
+                fig = px.histogram(
+                    df, x="quality_score", nbins=20,
+                    color_discrete_sequence=["#3498db"]
+                )
+                fig.add_vline(x=70, line_dash="dash", line_color="green", annotation_text="Banked threshold")
+                fig.add_vline(x=55, line_dash="dash", line_color="orange", annotation_text="Review threshold")
+                fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=20))
+                st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            st.markdown("##### Quality by Platform")
+            if "seq_type" in df.columns and "quality_score" in df.columns:
+                fig = px.box(df, x="seq_type", y="quality_score", color="seq_type")
+                fig.update_layout(height=300, margin=dict(l=20, r=20, t=20, b=20), showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+
+        # Quality factors
+        st.markdown("---")
+        st.markdown("##### Quality Scoring Factors")
+        st.markdown("""
+        | Factor | Max Points | Description |
+        |--------|------------|-------------|
+        | Sequencing Depth | 25 | Based on read count or throughput |
+        | Read Length | 20-25 | Longer reads score higher |
+        | Metadata Quality | 25 | Harmonized sample attributes |
+        | Clinical Fields | 15 | Patient/clinical metadata |
+        | Sample Relevance | 10 | Fecal/gut samples bonus |
+        | Publication | 5 | Linked PubMed ID |
+        """)
+
+    # ====================
+    # ACCESS STATUS VIEW
+    # ====================
+    elif current_view == "Access Status":
+        st.markdown("#### Access Status - Public vs Private Data")
+
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Public Datasets", public_count, help="Freely downloadable")
+        with col2:
+            st.metric("Private Datasets", private_count, help="Requires access request or partnership")
+        with col3:
+            public_pct = (public_count / total * 100) if total > 0 else 0
+            st.metric("Public %", f"{public_pct:.0f}%")
+        with col4:
+            public_banked = len(df[(df["access_type"] == "Public") & (df["vault_status"] == "Banked")]) if "access_type" in df.columns and "vault_status" in df.columns else 0
+            st.metric("Public & Bankable", public_banked)
+
+        st.markdown("---")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("##### Access Distribution")
+            if "access_type" in df.columns:
+                access_counts = df["access_type"].value_counts()
+                colors = {"Public": "#27ae60", "Private (Requires Access)": "#e74c3c"}
+                fig = px.pie(
+                    values=access_counts.values,
+                    names=access_counts.index,
+                    color=access_counts.index,
+                    color_discrete_map=colors
+                )
+                fig.update_layout(height=300, margin=dict(l=20, r=20, t=20, b=20))
+                st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            st.markdown("##### Access by Status")
+            if "access_type" in df.columns and "vault_status" in df.columns:
+                cross_tab = pd.crosstab(df["access_type"], df["vault_status"])
+                fig = px.bar(cross_tab, barmode="group")
+                fig.update_layout(height=300, margin=dict(l=20, r=20, t=20, b=20))
+                st.plotly_chart(fig, use_container_width=True)
+
+        # Partnership opportunities
+        st.markdown("---")
+        st.markdown("##### Partnership Opportunities")
+        if private_count > 0:
+            private_banked_quality = df[(df["access_type"] == "Private (Requires Access)") & (df["quality_score"] >= 55)] if "access_type" in df.columns and "quality_score" in df.columns else pd.DataFrame()
+            if len(private_banked_quality) > 0:
+                st.info(f"**{len(private_banked_quality)} private datasets** have good quality scores - consider outreach for data sharing partnerships")
+        else:
+            st.success("All discovered datasets are publicly accessible")
+
+    # ====================
+    # INFRASTRUCTURE VIEW
+    # ====================
+    elif current_view == "Infrastructure":
+        st.markdown("#### Infrastructure Planning - Storage & Compute")
+
+        # Calculate estimates
+        banked_gb = df[df["vault_status"] == "Banked"]["total_gb"].sum() if "vault_status" in df.columns and "total_gb" in df.columns else 0
+        pending_gb = df[df["vault_status"] == "Pending Review"]["total_gb"].sum() if "vault_status" in df.columns and "total_gb" in df.columns else 0
+
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Data Volume", f"{total_gb:.1f} Gb")
+        with col2:
+            st.metric("Banked Data", f"{banked_gb:.1f} Gb")
+        with col3:
+            st.metric("Pending Data", f"{pending_gb:.1f} Gb")
+        with col4:
+            # Estimate download time at 100 Mbps
+            download_hours = (total_gb * 8) / 100 / 3600
+            st.metric("Est. Download Time", f"{download_hours:.1f} hrs", help="At 100 Mbps")
+
+        st.markdown("---")
+
         render_infrastructure_metrics(df)
 
-    st.markdown("---")
+        st.markdown("---")
+        render_team_readiness(df)
 
-    # Bottom Row - Strategic Recommendations
+    # Always show strategic recommendations at bottom
+    st.markdown("---")
     render_strategic_recommendations(df, records)
 
 
@@ -1389,9 +1665,6 @@ def main():
         layout="wide"
     )
 
-    st.title("Microbiome Dataset Discovery")
-    st.caption("Automated discovery and curation for microbiome research")
-
     # Initialize session state
     if "results_df" not in st.session_state:
         st.session_state.results_df = pd.DataFrame()
@@ -1401,6 +1674,10 @@ def main():
         st.session_state.favorites = set()
     if "selected_for_compare" not in st.session_state:
         st.session_state.selected_for_compare = []
+    if "leadership_view" not in st.session_state:
+        st.session_state.leadership_view = "Banking Progress"
+    if "has_searched" not in st.session_state:
+        st.session_state.has_searched = False
 
     # Read URL params for search sharing
     query_params = st.query_params
@@ -1410,31 +1687,242 @@ def main():
     url_max = query_params.get("max", "")
     url_scoring = query_params.get("scoring", "")
 
-    # Sidebar
+    # If URL has query params, skip landing page
+    if url_query:
+        st.session_state.has_searched = True
+
+    # =====================
+    # LANDING PAGE
+    # =====================
+    if not st.session_state.has_searched:
+        # Centered landing page
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Title centered
+        st.markdown(
+            "<h1 style='text-align: center;'>Microbiome Dataset Discovery</h1>",
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            "<p style='text-align: center; color: gray;'>Search and explore microbiome sequencing datasets from NCBI SRA</p>",
+            unsafe_allow_html=True
+        )
+
+        st.markdown("<br><br>", unsafe_allow_html=True)
+
+        # Centered selection form
+        col1, col2, col3 = st.columns([1, 2, 1])
+
+        with col2:
+            # Role selection
+            role_options = ["Researcher", "Leadership"]
+            role = st.selectbox(
+                "I am a",
+                role_options,
+                index=0,
+                key="landing_role"
+            )
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            if role == "Leadership":
+                # Leadership sees dashboard focus options
+                view_options = LEADERSHIP_VIEWS
+                leadership_view = st.selectbox(
+                    "and I want to see",
+                    view_options,
+                    index=0,
+                    key="landing_view"
+                )
+                st.session_state.leadership_view = leadership_view
+                preset = leadership_view
+                query = "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]"
+            else:
+                # Researcher sees search options
+                search_options = [
+                    "All Available Data",
+                    "Mental Health",
+                    "Pain Conditions",
+                    "Digestive Health",
+                    "Metabolic Health",
+                    "Long-Read Sequencing",
+                    "Shotgun Metagenomics",
+                    "16S Amplicon",
+                    "Large Cohorts",
+                    "Clinical Trials",
+                    "Custom Search",
+                ]
+
+                search_option = st.selectbox(
+                    "and I'm looking for",
+                    search_options,
+                    index=0,
+                    key="landing_search"
+                )
+                preset = search_option
+
+                if search_option == "Custom Search":
+                    query = st.text_area(
+                        "Custom query",
+                        value="fecal[All Fields] AND microbiome[All Fields]",
+                        height=80,
+                        help="NCBI Entrez syntax",
+                        key="landing_custom"
+                    )
+                else:
+                    query = RESEARCHER_SEARCHES.get(search_option, RESEARCHER_SEARCHES["All Available Data"])
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # Max results
+            max_results = st.slider("Max results", 10, 100, 50, 10, key="landing_max")
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # Search button
+            if st.button("Search Datasets", type="primary", use_container_width=True, key="landing_search_btn"):
+                # Update URL params
+                st.query_params["q"] = query
+                st.query_params["role"] = role
+                st.query_params["preset"] = preset
+                st.query_params["max"] = str(max_results)
+                st.query_params["scoring"] = "auto"
+
+                # Show loading animation
+                import random
+                loading_placeholder = st.empty()
+                loading_placeholder.markdown(
+                    render_loading_animation(random.choice(LOADING_MESSAGES)),
+                    unsafe_allow_html=True
+                )
+
+                id_list = search_sra(query, max_results)
+
+                if id_list:
+                    loading_placeholder.markdown(
+                        render_loading_animation("Processing metadata..."),
+                        unsafe_allow_html=True
+                    )
+                    records = fetch_sra_metadata(id_list)
+                    scored_records = [calculate_quality_score(r, "auto") for r in records]
+                    st.session_state.records = scored_records
+                    st.session_state.results_df = create_results_dataframe(scored_records)
+                    loading_placeholder.empty()
+                    st.session_state.has_searched = True
+                    st.rerun()
+                else:
+                    loading_placeholder.empty()
+                    st.warning("No datasets found. Try adjusting your search.")
+
+        # Footer on landing page
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        st.markdown("---")
+        col1, col2, col3 = st.columns(3)
+        with col2:
+            st.caption("Data from [NCBI SRA](https://www.ncbi.nlm.nih.gov/sra)")
+
+        return  # Stop here if on landing page
+
+    # =====================
+    # MAIN DATA INTERFACE
+    # =====================
+
+    # Sidebar for users who have searched
     with st.sidebar:
-        # Role selection
-        default_role_idx = ROLES.index(url_role) if url_role in ROLES else 0
-        role = st.selectbox("I am a", ROLES, index=default_role_idx)
+        # Back to start button
+        if st.button("New Search", use_container_width=True):
+            st.session_state.has_searched = False
+            st.session_state.results_df = pd.DataFrame()
+            st.session_state.records = []
+            st.query_params.clear()
+            st.rerun()
 
-        # Search presets - same for everyone
-        preset_options = list(SEARCH_PRESETS.keys())
-        all_preset_options = preset_options + ["Custom Search"]
-        try:
-            default_preset_idx = all_preset_options.index(url_preset) if url_preset in all_preset_options else 0
-        except (ValueError, KeyError):
-            default_preset_idx = 0
-        preset = st.selectbox("looking for", all_preset_options, index=default_preset_idx)
+        st.markdown("---")
 
-        if preset == "Custom Search":
-            default_query = url_query if url_query else "fecal[All Fields] AND microbiome[All Fields]"
+        # Mode selection - Discovery vs Analytics
+        mode_options = ["Dataset Discovery", "Analytics Dashboard"]
+        default_mode = "Analytics Dashboard" if url_role == "Leadership" else "Dataset Discovery"
+        default_mode_idx = mode_options.index(default_mode) if default_mode in mode_options else 0
+
+        mode = st.radio(
+            "View",
+            mode_options,
+            index=default_mode_idx,
+            horizontal=True,
+            help="Switch between data discovery and leadership analytics"
+        )
+
+        st.markdown("---")
+
+        if mode == "Analytics Dashboard":
+            # Leadership analytics mode
+            st.markdown("**Dashboard Focus**")
+            view_options = LEADERSHIP_VIEWS
+            try:
+                default_view_idx = view_options.index(url_preset) if url_preset in view_options else 0
+            except (ValueError, KeyError):
+                default_view_idx = 0
+            leadership_view = st.selectbox(
+                "Show me",
+                view_options,
+                index=default_view_idx,
+                help="Select which metrics to focus on"
+            )
+            st.session_state.leadership_view = leadership_view
+            preset = leadership_view
+            role = "Leadership"
+
+            # Data source for analytics
+            st.markdown("**Data Source**")
             query = st.text_area(
-                "Custom query",
-                value=default_query,
-                height=80,
-                help="NCBI Entrez syntax"
+                "Search query",
+                value=url_query if url_query else "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]",
+                height=60,
+                help="Load data to analyze"
             )
         else:
-            query = SEARCH_PRESETS[preset]
+            # Dataset Discovery mode (default)
+            st.markdown("**Search For**")
+            role = "Researcher"
+
+            # Organized search options
+            selectable_options = [
+                "All Available Data",
+                "Mental Health",
+                "Pain Conditions",
+                "Digestive Health",
+                "Metabolic Health",
+                "Long-Read Sequencing",
+                "Shotgun Metagenomics",
+                "16S Amplicon",
+                "Large Cohorts",
+                "Clinical Trials",
+                "Custom Search",
+            ]
+
+            try:
+                default_search_idx = selectable_options.index(url_preset) if url_preset in selectable_options else 0
+            except (ValueError, KeyError):
+                default_search_idx = 0
+
+            search_option = st.selectbox(
+                "I'm looking for",
+                selectable_options,
+                index=default_search_idx,
+                help="Select what type of data to search for"
+            )
+            preset = search_option
+
+            if search_option == "Custom Search":
+                default_query = url_query if url_query else "fecal[All Fields] AND microbiome[All Fields]"
+                query = st.text_area(
+                    "Custom query",
+                    value=default_query,
+                    height=80,
+                    help="NCBI Entrez syntax"
+                )
+            else:
+                query = RESEARCHER_SEARCHES.get(search_option, RESEARCHER_SEARCHES["All Available Data"])
 
         default_max = int(url_max) if url_max and url_max.isdigit() else 50
         max_results = st.slider("Max results", 10, 100, default_max, 10)
@@ -1442,7 +1930,6 @@ def main():
         st.markdown("---")
 
         scoring_options = ["auto", "nanopore", "illumina"]
-        # Safely get scoring index
         try:
             default_scoring_idx = scoring_options.index(url_scoring) if url_scoring in scoring_options else 0
         except (ValueError, KeyError):
@@ -1455,7 +1942,7 @@ def main():
             horizontal=True
         )
 
-        search_button = st.button("Search", type="primary", use_container_width=True)
+        search_button = st.button("Update Search", type="primary", use_container_width=True)
 
         st.markdown("---")
 
@@ -1487,13 +1974,16 @@ A tool for discovering and evaluating microbiome sequencing datasets from public
 - **PMID**: PubMed article ID
             """)
 
-    # Auto-execute search if URL params present and no results yet
-    auto_search = False
-    if url_query and st.session_state.results_df.empty:
-        auto_search = True
+    # Page title based on mode
+    if mode == "Analytics Dashboard":
+        st.title("Analytics Dashboard")
+        st.caption("Leadership view - Genome banking operations and strategic metrics")
+    else:
+        st.title("Microbiome Dataset Discovery")
+        st.caption("Search and explore microbiome sequencing datasets from NCBI SRA")
 
-    # Execute search
-    if search_button or auto_search:
+    # Execute search if button pressed
+    if search_button:
         # Update URL params
         st.query_params["q"] = query
         st.query_params["role"] = role
@@ -1501,57 +1991,72 @@ A tool for discovering and evaluating microbiome sequencing datasets from public
         st.query_params["max"] = str(max_results)
         st.query_params["scoring"] = scoring_mode
 
-        with st.spinner("Searching NCBI SRA..."):
-            id_list = search_sra(query, max_results)
+        # Show loading animation
+        import random
+        loading_placeholder = st.empty()
+        loading_placeholder.markdown(
+            render_loading_animation(random.choice(LOADING_MESSAGES)),
+            unsafe_allow_html=True
+        )
+
+        id_list = search_sra(query, max_results)
 
         if id_list:
-            with st.spinner("Processing metadata..."):
-                records = fetch_sra_metadata(id_list)
-                scored_records = [calculate_quality_score(r, scoring_mode) for r in records]
-                st.session_state.records = scored_records
-                st.session_state.results_df = create_results_dataframe(scored_records)
+            loading_placeholder.markdown(
+                render_loading_animation("Processing metadata..."),
+                unsafe_allow_html=True
+            )
+            records = fetch_sra_metadata(id_list)
+            scored_records = [calculate_quality_score(r, scoring_mode) for r in records]
+            st.session_state.records = scored_records
+            st.session_state.results_df = create_results_dataframe(scored_records)
+            loading_placeholder.empty()
         else:
+            loading_placeholder.empty()
             st.warning("No datasets found. Try adjusting your query.")
 
     df = st.session_state.results_df
     records = st.session_state.records
 
-    # Key metrics
-    render_key_metrics(df)
+    # Different layouts for each mode
+    if mode == "Analytics Dashboard":
+        # Leadership Analytics Mode - Mission Control focused
+        render_key_metrics(df)
 
-    # Tabs - order based on role
-    if role == "Leadership":
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-            "Mission Control", "Overview", "Dataset Browser", "Disease Cohorts", "Data Quality", "Export"
+        # Mission Control is the main content
+        render_mission_control(df, records)
+
+        # Additional tabs for details
+        st.markdown("---")
+        st.markdown("### Detailed Views")
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "Disease Cohorts", "Data Quality", "Browse Data", "Export"
         ])
         with tab1:
-            render_mission_control(df, records)
+            render_disease_cohorts(df)
         with tab2:
-            render_overview_tab(df, records)
+            render_data_quality(df)
         with tab3:
             render_dataset_browser(df, records)
         with tab4:
-            render_disease_cohorts(df)
-        with tab5:
-            render_data_quality(df)
-        with tab6:
             render_export_tab(df, records)
     else:
-        # Researcher - Dataset Browser first
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-            "Dataset Browser", "Overview", "Mission Control", "Disease Cohorts", "Data Quality", "Export"
+        # Dataset Discovery Mode - Search & Browse focused
+        render_key_metrics(df)
+
+        # Tabs for discovery workflow
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+            "Browse Datasets", "Overview", "Disease Categories", "Quality Details", "Export"
         ])
         with tab1:
             render_dataset_browser(df, records)
         with tab2:
             render_overview_tab(df, records)
         with tab3:
-            render_mission_control(df, records)
-        with tab4:
             render_disease_cohorts(df)
-        with tab5:
+        with tab4:
             render_data_quality(df)
-        with tab6:
+        with tab5:
             render_export_tab(df, records)
 
     # Footer

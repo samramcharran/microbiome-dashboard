@@ -213,26 +213,34 @@ def search_sra(query: str, max_results: int = 50) -> list[str]:
         return []
 
 
-def fetch_sra_metadata(id_list: list[str]) -> list[dict]:
-    """Fetch detailed metadata for a list of SRA IDs."""
+def fetch_sra_metadata(id_list: list[str], batch_size: int = 100) -> list[dict]:
+    """Fetch detailed metadata for a list of SRA IDs in batches."""
     if not id_list:
         return []
 
+    all_records = []
     fetch_url = f"{NCBI_BASE_URL}/efetch.fcgi"
-    params = {
-        "db": "sra",
-        "id": ",".join(id_list),
-        "rettype": "full",
-        "retmode": "xml"
-    }
 
-    try:
-        response = requests.get(fetch_url, params=params, timeout=60)
-        response.raise_for_status()
-        return parse_sra_xml(response.text)
-    except requests.RequestException as e:
-        st.error(f"Metadata fetch failed: {e}")
-        return []
+    # Process in batches to avoid URL length limits
+    for i in range(0, len(id_list), batch_size):
+        batch = id_list[i:i + batch_size]
+        params = {
+            "db": "sra",
+            "id": ",".join(batch),
+            "rettype": "full",
+            "retmode": "xml"
+        }
+
+        try:
+            response = requests.get(fetch_url, params=params, timeout=60)
+            response.raise_for_status()
+            records = parse_sra_xml(response.text)
+            all_records.extend(records)
+        except requests.RequestException as e:
+            st.warning(f"Batch {i//batch_size + 1} failed: {e}")
+            continue
+
+    return all_records
 
 
 def parse_sra_xml(xml_content: str) -> list[dict]:

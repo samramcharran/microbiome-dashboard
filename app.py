@@ -20,7 +20,7 @@ import re
 
 # Configuration
 NCBI_BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
-MAX_RESULTS = 200
+MAX_RESULTS = 10000  # Maximum for researchers
 
 # Metadata harmonization ontology
 METADATA_ONTOLOGY = {
@@ -523,14 +523,47 @@ def create_results_dataframe(records: list[dict]) -> pd.DataFrame:
 
     df = pd.DataFrame(records)
 
+    # Add Read Type column (simplified from seq_type)
+    if "seq_type" in df.columns:
+        def classify_read_type(seq_type):
+            if pd.isna(seq_type):
+                return "Unknown"
+            seq_type_str = str(seq_type).lower()
+            if "long" in seq_type_str or "nanopore" in seq_type_str or "pacbio" in seq_type_str:
+                return "Long Read"
+            elif "short" in seq_type_str or "illumina" in seq_type_str:
+                return "Short Read"
+            else:
+                return "Unknown"
+        df["read_type"] = df["seq_type"].apply(classify_read_type)
+
+    # Add Grade column based on quality score
+    if "total_score" in df.columns:
+        def assign_grade(score):
+            if pd.isna(score):
+                return "N/A"
+            if score >= 85:
+                return "A"
+            elif score >= 70:
+                return "B"
+            elif score >= 55:
+                return "C"
+            elif score >= 40:
+                return "D"
+            else:
+                return "F"
+        df["grade"] = df["total_score"].apply(assign_grade)
+        # Also create quality_score alias for compatibility
+        df["quality_score"] = df["total_score"]
+
     display_columns = [
         "run_accession", "run_url", "accession", "sra_url",
         "bioproject_id", "bioproject_url", "pubmed_ids",
-        "title", "organism", "platform", "seq_type",
+        "title", "organism", "platform", "seq_type", "read_type",
         "total_gb", "avg_read_length",
-        "access_type", "vault_status", "disease_category",
+        "access_type", "vault_status", "grade", "disease_category",
         "harmonized_count", "is_fecal_sample", "gut_brain_relevant",
-        "total_score"
+        "total_score", "quality_score"
     ]
 
     available_columns = [col for col in display_columns if col in df.columns]
@@ -1240,7 +1273,7 @@ def render_dataset_browser(df: pd.DataFrame, records: list[dict]):
         st.session_state.selected_for_compare = []
 
     # Filters row 1
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
 
     with col1:
         if "vault_status" in df.columns:
@@ -1253,6 +1286,28 @@ def render_dataset_browser(df: pd.DataFrame, records: list[dict]):
             status_filter = []
 
     with col2:
+        if "read_type" in df.columns:
+            read_type_options = df["read_type"].unique().tolist()
+            read_type_filter = st.multiselect(
+                "Read Type",
+                options=read_type_options,
+                default=read_type_options
+            )
+        else:
+            read_type_filter = []
+
+    with col3:
+        if "grade" in df.columns:
+            grade_options = ["A", "B", "C", "D", "F"]
+            grade_filter = st.multiselect(
+                "Grade",
+                options=grade_options,
+                default=["A", "B", "C"]
+            )
+        else:
+            grade_filter = []
+
+    with col4:
         if "access_type" in df.columns:
             access_filter = st.multiselect(
                 "Access",
@@ -1262,11 +1317,9 @@ def render_dataset_browser(df: pd.DataFrame, records: list[dict]):
         else:
             access_filter = []
 
-    with col3:
-        fecal_only = st.checkbox("Fecal/gut samples only", value=False)
-
-    with col4:
-        favorites_only = st.checkbox("Show favorites only", value=False)
+    with col5:
+        fecal_only = st.checkbox("Fecal only", value=False)
+        favorites_only = st.checkbox("Favorites only", value=False)
 
     # Date filtering row
     col1, col2 = st.columns(2)
@@ -1279,6 +1332,10 @@ def render_dataset_browser(df: pd.DataFrame, records: list[dict]):
     filtered_df = df.copy()
     if "vault_status" in df.columns and status_filter:
         filtered_df = filtered_df[filtered_df["vault_status"].isin(status_filter)]
+    if "read_type" in df.columns and read_type_filter:
+        filtered_df = filtered_df[filtered_df["read_type"].isin(read_type_filter)]
+    if "grade" in df.columns and grade_filter:
+        filtered_df = filtered_df[filtered_df["grade"].isin(grade_filter)]
     if "access_type" in df.columns and access_filter:
         filtered_df = filtered_df[filtered_df["access_type"].isin(access_filter)]
     if fecal_only and "is_fecal_sample" in df.columns:
@@ -1344,11 +1401,15 @@ def render_dataset_browser(df: pd.DataFrame, records: list[dict]):
             "favorite": st.column_config.CheckboxColumn("Star", default=False, width="small"),
             "run_accession": st.column_config.TextColumn("Run ID"),
             "run_url": st.column_config.LinkColumn("Link", display_text="View"),
+            "grade": st.column_config.TextColumn("Grade", help="Quality grade: A (85+), B (70-84), C (55-69), D (40-54), F (<40)"),
+            "read_type": st.column_config.TextColumn("Read Type", help="Long Read (Nanopore/PacBio) or Short Read (Illumina)"),
             "vault_status": st.column_config.TextColumn("Status"),
             "access_type": st.column_config.TextColumn("Access"),
             "disease_category": st.column_config.TextColumn("Disease"),
             "total_gb": st.column_config.NumberColumn("Gb", format="%.2f"),
             "total_score": st.column_config.NumberColumn("Score"),
+            "organism": st.column_config.TextColumn("Organism"),
+            "seq_type": st.column_config.TextColumn("Platform"),
         },
         disabled=[c for c in display_df.columns if c != "favorite"],
         key="dataset_browser_editor"
@@ -1695,25 +1756,113 @@ def main():
     # LANDING PAGE
     # =====================
     if not st.session_state.has_searched:
-        # Centered landing page
+        # Add colorful gradient background and styling
+        st.markdown("""
+        <style>
+        .stApp {
+            background: linear-gradient(135deg, #e8f5e9 0%, #e3f2fd 50%, #f3e5f5 100%);
+        }
+        .landing-title {
+            text-align: center;
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #2e7d32, #1565c0, #7b1fa2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+        .landing-subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+        .landing-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .feature-box {
+            text-align: center;
+            padding: 1rem;
+            background: linear-gradient(135deg, #f5f5f5, #fafafa);
+            border-radius: 12px;
+            margin: 0.5rem;
+        }
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        # Animated microbe header
+        st.markdown("""
+        <div style="text-align: center; padding: 20px;">
+            <svg width="80" height="80" viewBox="0 0 120 120" style="margin-bottom: 10px;">
+                <style>
+                    .hero-microbe { animation: pulse 2s ease-in-out infinite; }
+                    @keyframes pulse {
+                        0%, 100% { transform: scale(1); opacity: 0.8; }
+                        50% { transform: scale(1.1); opacity: 1; }
+                    }
+                </style>
+                <ellipse class="hero-microbe" cx="60" cy="60" rx="35" ry="25" fill="#4CAF50"/>
+                <ellipse cx="45" cy="55" rx="5" ry="5" fill="white" opacity="0.6"/>
+                <ellipse cx="70" cy="50" rx="3" ry="3" fill="white" opacity="0.4"/>
+                <ellipse cx="30" cy="60" rx="8" ry="5" fill="#66BB6A"/>
+                <ellipse cx="90" cy="60" rx="8" ry="5" fill="#66BB6A"/>
+            </svg>
+        </div>
+        <h1 class="landing-title">Microbiome Dataset Discovery</h1>
+        <p class="landing-subtitle">Search and explore microbiome sequencing datasets from NCBI SRA</p>
+        """, unsafe_allow_html=True)
+
+        # Feature highlights
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.markdown("""
+            <div class="feature-box">
+                <div class="feature-icon">🔬</div>
+                <strong>10,000+ Datasets</strong><br>
+                <small>Public repositories</small>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown("""
+            <div class="feature-box">
+                <div class="feature-icon">📊</div>
+                <strong>Quality Scoring</strong><br>
+                <small>Automated grading</small>
+            </div>
+            """, unsafe_allow_html=True)
+        with col3:
+            st.markdown("""
+            <div class="feature-box">
+                <div class="feature-icon">🧬</div>
+                <strong>Read Detection</strong><br>
+                <small>Long & short read</small>
+            </div>
+            """, unsafe_allow_html=True)
+        with col4:
+            st.markdown("""
+            <div class="feature-box">
+                <div class="feature-icon">🏥</div>
+                <strong>Disease Focus</strong><br>
+                <small>Gut-brain & more</small>
+            </div>
+            """, unsafe_allow_html=True)
+
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # Title centered
-        st.markdown(
-            "<h1 style='text-align: center;'>Microbiome Dataset Discovery</h1>",
-            unsafe_allow_html=True
-        )
-        st.markdown(
-            "<p style='text-align: center; color: gray;'>Search and explore microbiome sequencing datasets from NCBI SRA</p>",
-            unsafe_allow_html=True
-        )
-
-        st.markdown("<br><br>", unsafe_allow_html=True)
-
-        # Centered selection form
+        # Centered selection form with card styling
         col1, col2, col3 = st.columns([1, 2, 1])
 
         with col2:
+            st.markdown('<div class="landing-card">', unsafe_allow_html=True)
+
             # Role selection
             role_options = ["Researcher", "Leadership"]
             role = st.selectbox(
@@ -1737,15 +1886,16 @@ def main():
                 st.session_state.leadership_view = leadership_view
                 preset = leadership_view
                 query = "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]"
+                max_default = 100
             else:
-                # Researcher sees search options
+                # Researcher sees search options - removed Long-Read as separate option
+                # since read type is now detected and shown as a column
                 search_options = [
                     "All Available Data",
                     "Mental Health",
                     "Pain Conditions",
                     "Digestive Health",
                     "Metabolic Health",
-                    "Long-Read Sequencing",
                     "Shotgun Metagenomics",
                     "16S Amplicon",
                     "Large Cohorts",
@@ -1771,11 +1921,21 @@ def main():
                     )
                 else:
                     query = RESEARCHER_SEARCHES.get(search_option, RESEARCHER_SEARCHES["All Available Data"])
+                max_default = 500  # Higher default for researchers
 
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # Max results
-            max_results = st.slider("Max results", 10, 100, 50, 10, key="landing_max")
+            # Max results - higher limit for researchers (10,000), lower for leadership (500)
+            max_limit = 10000 if role == "Researcher" else 500
+            max_results = st.slider(
+                "Max results",
+                min_value=10,
+                max_value=max_limit,
+                value=min(max_default, max_limit),
+                step=10 if max_limit <= 500 else 100,
+                key="landing_max",
+                help=f"Fetch up to {max_limit:,} datasets from NCBI"
+            )
 
             st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1839,20 +1999,24 @@ def main():
 
         st.markdown("---")
 
-        # Mode selection - Discovery vs Analytics
-        mode_options = ["Dataset Discovery", "Analytics Dashboard"]
-        default_mode = "Analytics Dashboard" if url_role == "Leadership" else "Dataset Discovery"
-        default_mode_idx = mode_options.index(default_mode) if default_mode in mode_options else 0
-
-        mode = st.radio(
-            "View",
-            mode_options,
-            index=default_mode_idx,
-            horizontal=True,
-            help="Switch between data discovery and leadership analytics"
-        )
-
-        st.markdown("---")
+        # Mode selection - Only show toggle for Leadership
+        # Researchers only see Dataset Discovery
+        if url_role == "Leadership":
+            mode_options = ["Analytics Dashboard", "Dataset Discovery"]
+            mode = st.radio(
+                "View",
+                mode_options,
+                index=0,
+                horizontal=True,
+                help="Switch between analytics and data discovery"
+            )
+            st.markdown("---")
+        else:
+            # Researcher - only Dataset Discovery mode
+            mode = "Dataset Discovery"
+            st.markdown("**Dataset Discovery**")
+            st.caption("Search and explore datasets")
+            st.markdown("---")
 
         if mode == "Analytics Dashboard":
             # Leadership analytics mode
@@ -1886,13 +2050,13 @@ def main():
             role = "Researcher"
 
             # Organized search options
+            # Note: Long-Read vs Short-Read is now detected automatically and shown in results
             selectable_options = [
                 "All Available Data",
                 "Mental Health",
                 "Pain Conditions",
                 "Digestive Health",
                 "Metabolic Health",
-                "Long-Read Sequencing",
                 "Shotgun Metagenomics",
                 "16S Amplicon",
                 "Large Cohorts",

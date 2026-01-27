@@ -1858,17 +1858,23 @@ def main():
                 <span class="feature-text">10,000+ Datasets</span>
             </div>
             <div class="feature-item">
-                <!-- Letter grade A with microbe accent - represents quality assessment -->
+                <!-- Microscope examining bacteria - quality inspection -->
                 <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                    <!-- Letter A -->
-                    <path d="M16 4L6 28h5l2-6h6l2 6h5L16 4z" fill="#1565C0"/>
-                    <path d="M14 18l2-6 2 6h-4z" fill="#E3F2FD"/>
-                    <!-- Plus sign for A+ -->
-                    <rect x="24" y="6" width="6" height="2" fill="#FFC107"/>
-                    <rect x="26" y="4" width="2" height="6" fill="#FFC107"/>
-                    <!-- Small bacterium accent -->
-                    <ellipse cx="6" cy="8" rx="3" ry="2" fill="#2196F3"/>
-                    <circle cx="5" cy="7.5" r="0.6" fill="white" opacity="0.5"/>
+                    <!-- Microscope body -->
+                    <rect x="14" y="4" width="4" height="14" rx="1" fill="#1565C0"/>
+                    <rect x="12" y="6" width="8" height="3" rx="1" fill="#1976D2"/>
+                    <!-- Eyepiece -->
+                    <ellipse cx="16" cy="3" rx="3" ry="2" fill="#0D47A1"/>
+                    <!-- Objective lens -->
+                    <rect x="14" y="18" width="4" height="4" fill="#1565C0"/>
+                    <circle cx="16" cy="23" r="2" fill="#0D47A1"/>
+                    <!-- Stage/base -->
+                    <rect x="8" y="26" width="16" height="3" rx="1" fill="#1976D2"/>
+                    <rect x="6" y="28" width="20" height="2" rx="1" fill="#1565C0"/>
+                    <!-- Bacteria being examined (with checkmark overlay) -->
+                    <ellipse cx="24" cy="14" rx="4" ry="2.5" fill="#4CAF50"/>
+                    <circle cx="23" cy="13.5" r="0.8" fill="white" opacity="0.5"/>
+                    <path d="M22 14l1.5 1.5 3-3" stroke="#FFC107" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 <span class="feature-text">Quality Grading</span>
             </div>
@@ -1889,19 +1895,21 @@ def main():
                 <span class="feature-text">Read Detection</span>
             </div>
             <div class="feature-item">
-                <!-- Medical cross with microbes - represents disease/health focus -->
+                <!-- Target crosshairs on bacteria - disease targeting/focus -->
                 <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                    <!-- Medical cross -->
-                    <rect x="12" y="4" width="8" height="24" rx="2" fill="#D32F2F"/>
-                    <rect x="4" y="12" width="24" height="8" rx="2" fill="#D32F2F"/>
-                    <!-- Highlight -->
-                    <rect x="14" y="6" width="4" height="6" fill="#EF5350" opacity="0.5"/>
-                    <!-- Microbes around the cross -->
-                    <ellipse cx="6" cy="6" rx="3" ry="2" fill="#FF7043"/>
-                    <circle cx="5" cy="5.5" r="0.5" fill="white" opacity="0.5"/>
-                    <ellipse cx="26" cy="26" rx="3" ry="2" fill="#FF7043"/>
-                    <circle cx="25" cy="25.5" r="0.5" fill="white" opacity="0.5"/>
-                    <ellipse cx="26" cy="6" rx="2.5" ry="1.5" fill="#FF8A65"/>
+                    <!-- Outer target ring -->
+                    <circle cx="16" cy="16" r="12" stroke="#E65100" stroke-width="2" fill="none"/>
+                    <!-- Inner target ring -->
+                    <circle cx="16" cy="16" r="7" stroke="#F57C00" stroke-width="1.5" fill="#FFF3E0"/>
+                    <!-- Crosshairs -->
+                    <line x1="16" y1="2" x2="16" y2="8" stroke="#E65100" stroke-width="2"/>
+                    <line x1="16" y1="24" x2="16" y2="30" stroke="#E65100" stroke-width="2"/>
+                    <line x1="2" y1="16" x2="8" y2="16" stroke="#E65100" stroke-width="2"/>
+                    <line x1="24" y1="16" x2="30" y2="16" stroke="#E65100" stroke-width="2"/>
+                    <!-- Bacteria in center (targeted) -->
+                    <ellipse cx="16" cy="16" rx="4" ry="2.5" fill="#FF7043"/>
+                    <circle cx="14.5" cy="15.5" r="0.8" fill="white" opacity="0.5"/>
+                    <ellipse cx="16" cy="13" rx="2" ry="1.2" fill="#FF8A65"/>
                 </svg>
                 <span class="feature-text">Disease Focus</span>
             </div>

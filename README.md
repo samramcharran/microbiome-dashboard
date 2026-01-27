@@ -119,8 +119,8 @@ The sidebar dropdown "I am from..." provides role-specific preset queries. All r
 | Role | What You Can Search For |
 |------|------------------------|
 | **Leadership** | All gut microbiome data, high-quality public datasets |
-| **Research** | Depression & anxiety, pain & fibromyalgia, IBS & IBD, long-read sequencing, shotgun metagenomics |
-| **Data Science** | Large patient cohorts, clinical trial data |
+| **Wet Lab** | Depression & anxiety, pain & fibromyalgia, IBS & IBD, long-read sequencing, shotgun metagenomics |
+| **Computational** | Cohorts, clinical trial data |
 | **Partnerships** | Clinical trials, probiotic studies |
 
 ## Quality Scoring System

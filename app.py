@@ -79,15 +79,15 @@ ROLE_PRESETS = {
         "All Gut Microbiome Data": "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]",
         "High-Quality Public Datasets": "gut microbiome[All Fields] AND human[Organism]",
     },
-    "Research": {
+    "Wet Lab": {
         "Depression & Anxiety": "(depression[All Fields] OR anxiety[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
         "Pain & Fibromyalgia": "(pain[All Fields] OR fibromyalgia[All Fields]) AND microbiome[All Fields]",
         "IBS & IBD": "(IBS[All Fields] OR IBD[All Fields] OR colitis[All Fields]) AND microbiome[All Fields]",
         "Long-Read Sequencing": "fecal[All Fields] AND Oxford Nanopore[Platform]",
         "Shotgun Metagenomics": "(shotgun[All Fields] OR metagenome[All Fields]) AND fecal[All Fields] AND human[Organism]",
     },
-    "Data Science": {
-        "Large Patient Cohorts": "stool[All Fields] AND cohort[All Fields] AND microbiome[All Fields]",
+    "Computational": {
+        "Cohorts": "stool[All Fields] AND cohort[All Fields] AND microbiome[All Fields]",
         "Clinical Trial Data": "gut microbiome[All Fields] AND human[Organism] AND clinical[All Fields]",
     },
     "Partnerships": {

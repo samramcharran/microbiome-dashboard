@@ -2,20 +2,46 @@
 
 **Live Demo:** https://microbiome-dashboard-samramcharran.streamlit.app
 
-A Streamlit application for searching, scoring, and analyzing microbiome datasets from NCBI Sequence Read Archive (SRA). Optimized for both short-read (Illumina) and long-read (Oxford Nanopore) sequencing technologies.
+A Streamlit application for searching, scoring, and analyzing microbiome datasets from NCBI Sequence Read Archive (SRA). Optimized for both short-read (Illumina) and long-read (Oxford Nanopore) sequencing technologies. Built for Holobiome's genome banking, metadata curation, and strategic data prioritization workflows.
 
 ## Features
 
+### Core Discovery Features
 - **SRA Search**: Query NCBI SRA for microbiome datasets using flexible search terms
-- **Technology-Specific Scoring**: Separate scoring algorithms for:
-  - **Short-read (Illumina)**: Optimized for read count and 250bp+ reads
-  - **Long-read (Nanopore)**: Optimized for throughput (Gb) and read length (10kb+)
+- **Technology-Specific Scoring**: Separate scoring algorithms for short-read (Illumina) and long-read (Nanopore)
 - **Clinical Metadata Detection**: Identifies datasets with patient/clinical metadata relevant for large cohort studies
 - **Fecal Sample Filtering**: Filter for gut microbiome-relevant stool/fecal samples
-- **Interactive Data Table**: Filter and sort results by quality grade, sequencing type, and sample type
-- **Quality Charts**: Visualize quality distributions, platform breakdown, and score components
-- **Nanopore Analysis Tab**: Dedicated view for long-read data with read length vs throughput scatter plots
-- **CSV Export**: Download filtered results for further analysis
+- **Disease Classification**: Auto-categorizes datasets by disease area (Gut-Brain Axis, Pain, GI Disorders, etc.)
+
+### Mission Control Dashboard (Leadership View)
+- **Strategic Metrics**: Genomes identified, banked, pending review, gut-brain relevant, total data volume
+- **Disease Burden Priority Matrix**: Visualizes strategic value of disease categories with weighted scoring
+- **Team Readiness Indicators**: Status for Wet Lab, Computational, and Clinical Analysis teams
+- **Infrastructure Planning**: Storage, download time, and processing estimates
+- **Strategic Recommendations**: Auto-generated action items based on current data
+
+### Dataset Browser Enhancements
+- **Favorites/Watchlist**: Star datasets for tracking, filter by favorites, export watchlist
+- **Dataset Comparison**: Side-by-side comparison of up to 3 datasets
+- **Date Filtering**: Filter datasets by collection date range
+- **Interactive Data Table**: Sortable, filterable table with direct NCBI links
+
+### Visualization Features
+- **Temporal Trend Chart**: Bar chart of datasets by collection year
+- **Platform Breakdown**: Pie chart of sequencing technologies and data volume by status
+- **Discovery Funnel**: Visual pipeline from discovered to high-quality to public-ready
+- **Disease Distribution Charts**: Bar and pie charts for disease categories
+
+### Search URL Sharing
+- **Shareable URLs**: Search parameters encoded in URL (q, role, preset, max, scoring)
+- **Auto-Search**: URLs with parameters automatically execute search on load
+- **Copy Search Link**: Easy sharing of search configurations
+
+### Export Options
+- **CSV Downloads**: Full results, banked only, or watchlist
+- **Accession Lists**: Plain text SRR IDs for bulk download
+- **JSON Export**: Structured data for pipeline integration
+- **Storage Estimates**: S3 cost calculations for banked data
 
 ## Installation
 
@@ -60,6 +86,44 @@ stool[All Fields] AND clinical[All Fields] AND microbiome[All Fields]
 16S[All Fields] AND fecal[All Fields] AND human[Organism]
 ```
 
+### URL Parameters for Search Sharing
+
+Share searches by appending parameters to your dashboard URL:
+
+```
+?q=fecal[All Fields] AND microbiome[All Fields]&role=Leadership&preset=Custom Query&max=50&scoring=auto
+```
+
+Parameters:
+- `q`: Search query (NCBI Entrez syntax)
+- `role`: Role preset (Leadership, Wet Lab, Computational, BD / Partnerships, Disease Focus)
+- `preset`: Preset query name or "Custom Query"
+- `max`: Maximum results (10-100)
+- `scoring`: Scoring mode (auto, nanopore, illumina)
+
+## Tab Structure
+
+| Tab | Description |
+|-----|-------------|
+| **Overview** | Discovery funnel, quick insights, temporal trend chart, platform breakdown |
+| **Mission Control** | Leadership dashboard with strategic metrics, disease burden matrix, team readiness, and recommendations |
+| **Dataset Browser** | Filterable table with favorites, comparison, date filtering |
+| **Disease Cohorts** | Disease category distribution, gut-brain relevance, cohort prioritization |
+| **Data Quality** | Vault status, access type, sequencing technology, sample type distributions |
+| **Export** | Download options for CSV, JSON, accession lists, and watchlist |
+
+## Role-Based Access
+
+The sidebar dropdown "I am from..." provides role-specific preset queries. All roles have access to all features - the presets just provide relevant starting searches:
+
+| Role | Preset Queries | Typical Use Case |
+|------|---------------|------------------|
+| **Leadership** | Strategic Overview, High-Value Public Data | Executive decision-making, portfolio overview |
+| **Wet Lab** | Cultivation Candidates (Long-Read), Strain-Level Resolution | Identifying datasets for strain isolation |
+| **Computational** | ML Training Data, Large Cohorts | Finding datasets for bioinformatics analysis |
+| **BD / Partnerships** | Collaboration Targets, Probiotic Research | Identifying partnership opportunities |
+| **Disease Focus** | Depression, Anxiety, Pain, IBS/IBD Studies | Disease-specific dataset discovery |
+
 ## Quality Scoring System
 
 Datasets are scored on a 100+ point scale with technology-specific criteria:
@@ -68,35 +132,44 @@ Datasets are scored on a 100+ point scale with technology-specific criteria:
 
 | Component | Max Points | Criteria |
 |-----------|------------|----------|
-| Sequencing Depth | 30 | Based on total read count |
+| Sequencing Depth | 25 | Based on total read count |
 | Read Length | 20 | 250bp+ scores highest |
-| Metadata | 30 | Number of sample attributes |
-| Platform | 20 | Illumina scores highest |
-| Clinical Fields | 10 | Patient/clinical metadata |
-| Sample Relevance | 5 | Fecal sample bonus |
+| Metadata | 25 | Number of harmonized sample attributes |
+| Clinical Fields | 15 | Patient/clinical metadata |
+| Sample Relevance | 10 | Fecal sample bonus |
+| Publication | 5 | Linked PubMed ID |
 
 ### Long-Read (Nanopore) Scoring
 
 | Component | Max Points | Criteria |
 |-----------|------------|----------|
-| Throughput | 30 | Based on total gigabases (10+ Gb optimal) |
+| Throughput | 25 | Based on total gigabases (10+ Gb optimal) |
 | Read Length | 25 | 10kb+ scores highest (strain-level resolution) |
-| Metadata | 25 | Number of sample attributes |
-| Platform | 20 | PromethION > MinION/GridION > Flongle |
-| Clinical Fields | 10 | Patient/clinical metadata |
-| Sample Relevance | 5 | Fecal sample bonus |
+| Metadata | 25 | Number of harmonized sample attributes |
+| Clinical Fields | 15 | Patient/clinical metadata |
+| Sample Relevance | 10 | Fecal sample bonus |
+| Publication | 5 | Linked PubMed ID |
 
-### Quality Grades
+### Vault Status Thresholds
 
-- **A**: 90+ points
-- **B**: 80-89 points
-- **C**: 70-79 points
-- **D**: 60-69 points
-- **F**: Below 60 points
+- **Banked**: 70+ points - High-quality, ready for genome vault
+- **Pending Review**: 55-69 points - Requires manual review
+- **Not Suitable**: <55 points - Does not meet quality thresholds
 
-### Clinical Metadata Fields Tracked
+### Disease Burden Weights
 
-Subject ID, patient ID, collection date, timepoint, visit, age, sex, disease status, diagnosis, treatment, medication, BMI, diet, antibiotics, geographic location
+Strategic prioritization weights for Mission Control:
+
+| Category | Weight |
+|----------|--------|
+| Gut-Brain Axis | 10 |
+| Pain Conditions | 9 |
+| GI Disorders | 8 |
+| Metabolic | 7 |
+| Immune/Inflammatory | 6 |
+| Infectious | 5 |
+| Healthy/Control | 3 |
+| Unclassified | 1 |
 
 ## Project Structure
 
@@ -106,6 +179,13 @@ microbiome-dashboard/
 ├── requirements.txt    # Python dependencies
 └── README.md          # Documentation
 ```
+
+## Dependencies
+
+- streamlit>=1.28.0
+- pandas>=2.0.0
+- plotly>=5.18.0
+- requests
 
 ## Data Sources & References
 
@@ -130,14 +210,18 @@ All data is retrieved from official NCBI repositories. Every accession number is
 - Uses NCBI E-utilities API for SRA queries
 - Parses SRA XML responses for metadata extraction
 - Built with Streamlit for interactive web interface
-- Plotly for responsive visualizations
+- Plotly for responsive visualizations including scatter_geo maps
 - Pandas for data manipulation
+- Session state for favorites, comparison selections, and search results
 
 ## Use Cases
 
+- **Genome Banking**: Identify high-quality datasets for vault ingestion
+- **Strategic Planning**: Use Mission Control for leadership decision-making
+- **Wet Lab Coordination**: Find long-read datasets for strain isolation
+- **Clinical Analysis**: Prioritize gut-brain relevant datasets
+- **Partnership Outreach**: Identify restricted-access datasets for collaboration
 - **Benchmarking**: Compare your sequencing data quality against public datasets
-- **Reference Selection**: Find high-quality datasets for method validation
-- **Clinical Study Design**: Identify comparable large-cohort studies
 - **Technology Evaluation**: Compare Nanopore vs Illumina dataset characteristics
 
 ## License

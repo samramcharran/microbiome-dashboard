@@ -1432,7 +1432,11 @@ def main():
 
         preset_options = list(ROLE_PRESETS[role].keys())
         all_preset_options = ["Custom Query"] + preset_options
-        default_preset_idx = all_preset_options.index(url_preset) if url_preset in all_preset_options else 0
+        # Safely get preset index (default to 0 if not found)
+        try:
+            default_preset_idx = all_preset_options.index(url_preset) if url_preset in all_preset_options else 0
+        except (ValueError, KeyError):
+            default_preset_idx = 0
         preset = st.selectbox("Looking for...", all_preset_options, index=default_preset_idx)
 
         if preset == "Custom Query":
@@ -1453,7 +1457,11 @@ def main():
         st.markdown("---")
 
         scoring_options = ["auto", "nanopore", "illumina"]
-        default_scoring_idx = scoring_options.index(url_scoring) if url_scoring in scoring_options else 0
+        # Safely get scoring index
+        try:
+            default_scoring_idx = scoring_options.index(url_scoring) if url_scoring in scoring_options else 0
+        except (ValueError, KeyError):
+            default_scoring_idx = 0
         scoring_mode = st.radio(
             "Scoring",
             scoring_options,
@@ -1464,24 +1472,35 @@ def main():
 
         search_button = st.button("Search", type="primary", use_container_width=True)
 
-        # Copy Search Link button
-        if st.session_state.results_df is not None and not st.session_state.results_df.empty:
-            current_params = f"?q={query}&role={role}&preset={preset}&max={max_results}&scoring={scoring_mode}"
-            st.markdown("---")
-            st.markdown("**Share Search**")
-            st.code(current_params, language=None)
-            st.caption("Append to your dashboard URL to share this search")
-
         st.markdown("---")
 
         # Watchlist indicator
         if st.session_state.favorites:
             st.markdown(f"**Watchlist:** {len(st.session_state.favorites)} datasets")
 
-        st.markdown("---")
-        st.caption(
-            "Data from [NCBI SRA](https://www.ncbi.nlm.nih.gov/sra)"
-        )
+        # About section
+        with st.expander("About & Data Sources"):
+            st.markdown("""
+**Microbiome Dataset Discovery Dashboard**
+
+A tool for discovering and evaluating microbiome sequencing datasets from public repositories.
+
+**Data Sources:**
+- [NCBI SRA](https://www.ncbi.nlm.nih.gov/sra) - Sequence Read Archive
+- [NCBI BioProject](https://www.ncbi.nlm.nih.gov/bioproject/) - Project metadata
+- [PubMed](https://pubmed.ncbi.nlm.nih.gov/) - Linked publications
+
+**How It Works:**
+1. Searches NCBI using E-utilities API
+2. Extracts and harmonizes metadata
+3. Scores datasets for quality
+4. Categorizes by disease area
+
+**Accession Types:**
+- **SRR**: Sequencing run ID
+- **PRJNA**: BioProject ID
+- **PMID**: PubMed article ID
+            """)
 
     # Auto-execute search if URL params present and no results yet
     auto_search = False
@@ -1538,30 +1557,11 @@ def main():
     with tab6:
         render_export_tab(df, records)
 
-    # Footer with references and data sources
+    # Footer
     st.markdown("---")
-    st.markdown("### Data Sources & References")
-    st.markdown("""
-All data is retrieved in real-time from official NCBI repositories. Every accession number displayed is real and verifiable.
-
-| Source | Description | Link |
-|--------|-------------|------|
-| NCBI SRA | Sequence Read Archive - primary source for all sequencing datasets | [ncbi.nlm.nih.gov/sra](https://www.ncbi.nlm.nih.gov/sra) |
-| NCBI E-utilities | API used for programmatic data retrieval | [E-utilities Documentation](https://www.ncbi.nlm.nih.gov/books/NBK25501/) |
-| NCBI BioProject | Study-level metadata and project information | [ncbi.nlm.nih.gov/bioproject](https://www.ncbi.nlm.nih.gov/bioproject/) |
-| PubMed | Linked scientific publications | [pubmed.ncbi.nlm.nih.gov](https://pubmed.ncbi.nlm.nih.gov/) |
-
-**Accession Types:**
-- **SRR** (e.g., SRR12345678): Unique sequencing run - one per dataset
-- **SRX** (e.g., SRX12345678): Experiment accession
-- **PRJNA** (e.g., PRJNA123456): BioProject - groups related samples from a study
-- **PMID** (e.g., 12345678): PubMed publication identifier
-    """)
-
     st.caption(
-        "Click any accession link to verify on the official NCBI website. "
-        "Data quality scores are calculated based on sequencing depth, read length, "
-        "metadata completeness, and clinical relevance."
+        "Data from [NCBI SRA](https://www.ncbi.nlm.nih.gov/sra) | "
+        "See 'About & Data Sources' in sidebar for more information"
     )
 
 

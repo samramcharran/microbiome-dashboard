@@ -1858,23 +1858,24 @@ def main():
                 <span class="feature-text">10,000+ Datasets</span>
             </div>
             <div class="feature-item">
-                <!-- Microscope examining bacteria - quality inspection -->
+                <!-- Quality gauge/meter with bacteria -->
                 <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                    <!-- Microscope body -->
-                    <rect x="14" y="4" width="4" height="14" rx="1" fill="#1565C0"/>
-                    <rect x="12" y="6" width="8" height="3" rx="1" fill="#1976D2"/>
-                    <!-- Eyepiece -->
-                    <ellipse cx="16" cy="3" rx="3" ry="2" fill="#0D47A1"/>
-                    <!-- Objective lens -->
-                    <rect x="14" y="18" width="4" height="4" fill="#1565C0"/>
-                    <circle cx="16" cy="23" r="2" fill="#0D47A1"/>
-                    <!-- Stage/base -->
-                    <rect x="8" y="26" width="16" height="3" rx="1" fill="#1976D2"/>
-                    <rect x="6" y="28" width="20" height="2" rx="1" fill="#1565C0"/>
-                    <!-- Bacteria being examined (with checkmark overlay) -->
-                    <ellipse cx="24" cy="14" rx="4" ry="2.5" fill="#4CAF50"/>
-                    <circle cx="23" cy="13.5" r="0.8" fill="white" opacity="0.5"/>
-                    <path d="M22 14l1.5 1.5 3-3" stroke="#FFC107" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Gauge arc background -->
+                    <path d="M6 22 A12 12 0 0 1 26 22" stroke="#E0E0E0" stroke-width="4" fill="none" stroke-linecap="round"/>
+                    <!-- Gauge arc filled (showing high quality) -->
+                    <path d="M6 22 A12 12 0 0 1 24 12" stroke="#4CAF50" stroke-width="4" fill="none" stroke-linecap="round"/>
+                    <!-- Gauge center -->
+                    <circle cx="16" cy="22" r="3" fill="#1565C0"/>
+                    <!-- Gauge needle pointing to high -->
+                    <line x1="16" y1="22" x2="22" y2="14" stroke="#1565C0" stroke-width="2" stroke-linecap="round"/>
+                    <!-- Bacteria on the gauge -->
+                    <ellipse cx="8" cy="12" rx="3" ry="2" fill="#66BB6A"/>
+                    <circle cx="7" cy="11.5" r="0.6" fill="white" opacity="0.5"/>
+                    <ellipse cx="24" cy="10" rx="2.5" ry="1.5" fill="#81C784"/>
+                    <!-- Quality level markers -->
+                    <circle cx="7" cy="20" r="1.5" fill="#F44336"/>
+                    <circle cx="16" cy="8" r="1.5" fill="#FFC107"/>
+                    <circle cx="25" cy="20" r="1.5" fill="#4CAF50"/>
                 </svg>
                 <span class="feature-text">Quality Grading</span>
             </div>

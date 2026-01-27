@@ -118,23 +118,22 @@ LOADING_MESSAGES = [
 
 def render_loading_animation(message: str = "Loading..."):
     """Render a microbiome-themed loading animation."""
-    import random
-
     # SVG animation of bacteria/microbes
+    # Note: CSS curly braces are escaped as {{ }} for Python format string
     microbe_svg = """
     <div style="text-align: center; padding: 40px;">
         <svg width="120" height="120" viewBox="0 0 120 120">
             <style>
-                .microbe { animation: float 2s ease-in-out infinite; }
-                .microbe1 { animation-delay: 0s; }
-                .microbe2 { animation-delay: 0.3s; }
-                .microbe3 { animation-delay: 0.6s; }
-                .microbe4 { animation-delay: 0.9s; }
-                .microbe5 { animation-delay: 1.2s; }
-                @keyframes float {
-                    0%, 100% { transform: translateY(0px); opacity: 0.7; }
-                    50% { transform: translateY(-10px); opacity: 1; }
-                }
+                .microbe {{ animation: float 2s ease-in-out infinite; }}
+                .microbe1 {{ animation-delay: 0s; }}
+                .microbe2 {{ animation-delay: 0.3s; }}
+                .microbe3 {{ animation-delay: 0.6s; }}
+                .microbe4 {{ animation-delay: 0.9s; }}
+                .microbe5 {{ animation-delay: 1.2s; }}
+                @keyframes float {{
+                    0%, 100% {{ transform: translateY(0px); opacity: 0.7; }}
+                    50% {{ transform: translateY(-10px); opacity: 1; }}
+                }}
             </style>
             <!-- Bacteria shapes -->
             <ellipse class="microbe microbe1" cx="30" cy="60" rx="12" ry="8" fill="#4CAF50"/>

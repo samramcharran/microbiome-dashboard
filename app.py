@@ -1840,66 +1840,68 @@ def main():
         st.markdown("""
         <div class="feature-row">
             <div class="feature-item">
-                <!-- Bacterial Colony - multiple microbes clustered -->
+                <!-- Database stack with bacteria - represents large dataset collection -->
                 <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                    <ellipse cx="16" cy="16" rx="7" ry="5" fill="#4CAF50"/>
-                    <ellipse cx="8" cy="12" rx="5" ry="3.5" fill="#66BB6A"/>
-                    <ellipse cx="24" cy="12" rx="5" ry="3.5" fill="#81C784"/>
-                    <ellipse cx="10" cy="22" rx="4" ry="3" fill="#A5D6A7"/>
-                    <ellipse cx="22" cy="22" rx="4" ry="3" fill="#C8E6C9"/>
-                    <ellipse cx="16" cy="8" rx="3" ry="2" fill="#43A047"/>
-                    <circle cx="14" cy="15" r="1" fill="white" opacity="0.6"/>
-                    <circle cx="9" cy="11" r="0.8" fill="white" opacity="0.5"/>
+                    <!-- Database cylinders stacked -->
+                    <ellipse cx="16" cy="24" rx="10" ry="3" fill="#2E7D32"/>
+                    <rect x="6" y="20" width="20" height="4" fill="#2E7D32"/>
+                    <ellipse cx="16" cy="20" rx="10" ry="3" fill="#43A047"/>
+                    <rect x="6" y="14" width="20" height="6" fill="#43A047"/>
+                    <ellipse cx="16" cy="14" rx="10" ry="3" fill="#66BB6A"/>
+                    <rect x="6" y="8" width="20" height="6" fill="#66BB6A"/>
+                    <ellipse cx="16" cy="8" rx="10" ry="3" fill="#81C784"/>
+                    <!-- Small bacteria on database -->
+                    <ellipse cx="22" cy="6" rx="3" ry="2" fill="#4CAF50"/>
+                    <circle cx="21" cy="5.5" r="0.5" fill="white" opacity="0.6"/>
+                    <ellipse cx="9" cy="12" rx="2.5" ry="1.5" fill="#388E3C"/>
                 </svg>
                 <span class="feature-text">10,000+ Datasets</span>
             </div>
             <div class="feature-item">
-                <!-- Petri Dish with quality star -->
+                <!-- Letter grade A with microbe accent - represents quality assessment -->
                 <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                    <ellipse cx="16" cy="18" rx="12" ry="8" stroke="#2196F3" stroke-width="2" fill="#E3F2FD"/>
-                    <ellipse cx="16" cy="16" rx="12" ry="8" stroke="#2196F3" stroke-width="2" fill="#BBDEFB"/>
-                    <ellipse cx="12" cy="15" rx="3" ry="2" fill="#64B5F6"/>
-                    <ellipse cx="20" cy="17" rx="2.5" ry="1.8" fill="#42A5F5"/>
-                    <ellipse cx="15" cy="19" rx="2" ry="1.5" fill="#90CAF9"/>
-                    <path d="M24 6l1.5 3 3.5.5-2.5 2.5.5 3.5-3-1.5-3 1.5.5-3.5-2.5-2.5 3.5-.5z" fill="#FFC107"/>
+                    <!-- Letter A -->
+                    <path d="M16 4L6 28h5l2-6h6l2 6h5L16 4z" fill="#1565C0"/>
+                    <path d="M14 18l2-6 2 6h-4z" fill="#E3F2FD"/>
+                    <!-- Plus sign for A+ -->
+                    <rect x="24" y="6" width="6" height="2" fill="#FFC107"/>
+                    <rect x="26" y="4" width="2" height="6" fill="#FFC107"/>
+                    <!-- Small bacterium accent -->
+                    <ellipse cx="6" cy="8" rx="3" ry="2" fill="#2196F3"/>
+                    <circle cx="5" cy="7.5" r="0.6" fill="white" opacity="0.5"/>
                 </svg>
                 <span class="feature-text">Quality Grading</span>
             </div>
             <div class="feature-item">
-                <!-- DNA Sequencing Reads - long vs short -->
+                <!-- Magnifying glass examining DNA - represents detection/identification -->
                 <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                    <!-- Long read -->
-                    <rect x="2" y="6" width="28" height="4" rx="2" fill="#9C27B0"/>
-                    <rect x="4" y="7" width="3" height="2" fill="white" opacity="0.4"/>
-                    <rect x="9" y="7" width="5" height="2" fill="white" opacity="0.4"/>
-                    <rect x="16" y="7" width="4" height="2" fill="white" opacity="0.4"/>
-                    <rect x="22" y="7" width="6" height="2" fill="white" opacity="0.4"/>
-                    <!-- Short reads -->
-                    <rect x="2" y="14" width="8" height="3" rx="1.5" fill="#BA68C8"/>
-                    <rect x="12" y="14" width="8" height="3" rx="1.5" fill="#BA68C8"/>
-                    <rect x="22" y="14" width="8" height="3" rx="1.5" fill="#BA68C8"/>
-                    <rect x="5" y="20" width="8" height="3" rx="1.5" fill="#CE93D8"/>
-                    <rect x="15" y="20" width="8" height="3" rx="1.5" fill="#CE93D8"/>
-                    <rect x="8" y="26" width="8" height="3" rx="1.5" fill="#E1BEE7"/>
-                    <rect x="18" y="26" width="8" height="3" rx="1.5" fill="#E1BEE7"/>
+                    <!-- DNA helix inside magnifying glass -->
+                    <circle cx="13" cy="13" r="9" stroke="#7B1FA2" stroke-width="2.5" fill="#F3E5F5"/>
+                    <!-- DNA strand inside -->
+                    <path d="M9 8c2 1 4 1 6 0M9 11c2-1 4-1 6 0M9 14c2 1 4 1 6 0M9 17c2-1 4-1 6 0" stroke="#9C27B0" stroke-width="1.5" stroke-linecap="round"/>
+                    <circle cx="9" cy="8" r="1" fill="#BA68C8"/>
+                    <circle cx="15" cy="11" r="1" fill="#BA68C8"/>
+                    <circle cx="9" cy="14" r="1" fill="#BA68C8"/>
+                    <circle cx="15" cy="17" r="1" fill="#BA68C8"/>
+                    <!-- Magnifying glass handle -->
+                    <line x1="20" y1="20" x2="28" y2="28" stroke="#7B1FA2" stroke-width="3" stroke-linecap="round"/>
                 </svg>
                 <span class="feature-text">Read Detection</span>
             </div>
             <div class="feature-item">
-                <!-- Gut-Brain Axis connection -->
+                <!-- Medical cross with microbes - represents disease/health focus -->
                 <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                    <!-- Brain -->
-                    <path d="M16 4c-4 0-7 2-7 5c0 2 1 3 2 4c-1 0-2 1-2 2c0 2 3 3 7 3s7-1 7-3c0-1-1-2-2-2c1-1 2-2 2-4c0-3-3-5-7-5z" fill="#FF7043"/>
-                    <path d="M12 7c0 0-1 2 0 3M16 6c0 0 0 2 0 3M20 7c0 0 1 2 0 3" stroke="#FFAB91" stroke-width="1"/>
-                    <!-- Connection line -->
-                    <path d="M16 18v4" stroke="#FF5722" stroke-width="2" stroke-dasharray="2 1"/>
-                    <!-- Gut/intestine -->
-                    <path d="M10 24c2-1 4 1 6 0s4 1 6 0" stroke="#FF5722" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-                    <path d="M10 28c2-1 4 1 6 0s4 1 6 0" stroke="#FF8A65" stroke-width="2" stroke-linecap="round" fill="none"/>
-                    <!-- Microbes in gut -->
-                    <circle cx="12" cy="26" r="1.5" fill="#4CAF50"/>
-                    <circle cx="16" cy="25" r="1" fill="#66BB6A"/>
-                    <circle cx="20" cy="26" r="1.5" fill="#81C784"/>
+                    <!-- Medical cross -->
+                    <rect x="12" y="4" width="8" height="24" rx="2" fill="#D32F2F"/>
+                    <rect x="4" y="12" width="24" height="8" rx="2" fill="#D32F2F"/>
+                    <!-- Highlight -->
+                    <rect x="14" y="6" width="4" height="6" fill="#EF5350" opacity="0.5"/>
+                    <!-- Microbes around the cross -->
+                    <ellipse cx="6" cy="6" rx="3" ry="2" fill="#FF7043"/>
+                    <circle cx="5" cy="5.5" r="0.5" fill="white" opacity="0.5"/>
+                    <ellipse cx="26" cy="26" rx="3" ry="2" fill="#FF7043"/>
+                    <circle cx="25" cy="25.5" r="0.5" fill="white" opacity="0.5"/>
+                    <ellipse cx="26" cy="6" rx="2.5" ry="1.5" fill="#FF8A65"/>
                 </svg>
                 <span class="feature-text">Disease Focus</span>
             </div>

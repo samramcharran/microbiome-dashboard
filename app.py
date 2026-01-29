@@ -964,7 +964,7 @@ def render_mission_control(df: pd.DataFrame, records: list[dict]):
 
     # Get the selected leadership view
     current_view = st.session_state.get("leadership_view", "Banking Progress")
-    st.caption(f"Holobiome Leadership Dashboard - Viewing: **{current_view}**")
+    st.caption(f"Leadership Dashboard - Viewing: **{current_view}**")
 
     if df.empty:
         st.info("Run a search to populate the Mission Control dashboard.")

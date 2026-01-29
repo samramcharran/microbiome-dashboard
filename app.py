@@ -1402,10 +1402,12 @@ def render_dataset_browser(df: pd.DataFrame, records: list[dict]):
     # Dataset comparison selector
     available_accessions = filtered_df["run_accession"].dropna().tolist() if "run_accession" in filtered_df.columns else []
     if available_accessions:
+        # Filter default values to only include accessions that exist in current options
+        valid_defaults = [acc for acc in st.session_state.selected_for_compare if acc in available_accessions][:3]
         selected_compare = st.multiselect(
             "Select datasets to compare (max 3)",
             options=available_accessions,
-            default=st.session_state.selected_for_compare[:3] if st.session_state.selected_for_compare else [],
+            default=valid_defaults,
             max_selections=3,
             key="compare_selector"
         )

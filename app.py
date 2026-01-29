@@ -95,16 +95,13 @@ LEADERSHIP_VIEWS = [
 RESEARCHER_SEARCHES = {
     # By Condition
     "Mental Health": "(depression[All Fields] OR anxiety[All Fields] OR stress[All Fields] OR autism[All Fields] OR parkinson[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
-    "Pain Conditions": "(pain[All Fields] OR fibromyalgia[All Fields] OR chronic pain[All Fields] OR neuropathy[All Fields]) AND microbiome[All Fields]",
+    "Pain Conditions": "(pain[All Fields] OR fibromyalgia[All Fields] OR \"chronic pain\"[All Fields] OR neuropathy[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
     "Digestive Health": "(IBS[All Fields] OR IBD[All Fields] OR crohn[All Fields] OR colitis[All Fields]) AND microbiome[All Fields]",
     "Metabolic Health": "(obesity[All Fields] OR diabetes[All Fields] OR metabolic[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",
     # By Data Type
-    "Long-Read Sequencing": "(fecal[All Fields] OR stool[All Fields]) AND (Oxford Nanopore[Platform] OR PacBio[Platform])",
+    "Long-Read Sequencing": "(fecal[All Fields] OR stool[All Fields]) AND (\"oxford nanopore\"[All Fields] OR nanopore[All Fields] OR pacbio[All Fields] OR \"long read\"[All Fields])",
     "Shotgun Metagenomics": "(shotgun[All Fields] OR metagenome[All Fields] OR WGS[All Fields]) AND fecal[All Fields] AND human[Organism]",
     "16S Amplicon": "16S[All Fields] AND (fecal[All Fields] OR stool[All Fields]) AND human[Organism]",
-    # By Quality & Access
-    "High-Quality Only": "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]",  # Filtered post-search
-    "Public Datasets": "fecal[All Fields] AND microbiome[All Fields] AND human[Organism]",  # Filtered post-search
     # By Study Design
     "Large Cohorts": "stool[All Fields] AND cohort[All Fields] AND microbiome[All Fields]",
     "Clinical Trials": "(clinical trial[All Fields] OR randomized[All Fields] OR intervention[All Fields]) AND gut[All Fields] AND microbiome[All Fields]",

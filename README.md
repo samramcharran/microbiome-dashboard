@@ -64,15 +64,22 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-### Configuration (Optional)
+### NCBI API Compliance
 
-For compliance with NCBI guidelines, you can set environment variables:
+This application **fully complies with NCBI E-utilities guidelines** out of the box:
+
+- ✅ **Tool identification**: All API requests include `tool=microbiome-dashboard`
+- ✅ **Rate limiting**: Automatic 0.34-second delay between requests (stays under 3 requests/second limit)
+- ✅ **No data hoarding**: Real-time queries only, no caching or mirroring of NCBI data
+
+**Optional enhancements** (not required for compliance):
 
 ```bash
-# Developer contact email (recommended by NCBI for service notifications)
+# Developer contact email (for NCBI service notifications)
 export NCBI_EMAIL="your-email@example.com"
 
-# API key for higher rate limits (get one at https://www.ncbi.nlm.nih.gov/account/settings/)
+# API key for higher rate limits - 10/sec instead of 3/sec
+# Get one at https://www.ncbi.nlm.nih.gov/account/settings/
 export NCBI_API_KEY="your-api-key"
 ```
 

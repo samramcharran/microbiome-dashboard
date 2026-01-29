@@ -2198,7 +2198,9 @@ def main():
             st.markdown("""
 **Microbiome Dataset Discovery Dashboard**
 
-An **educational tool** for discovering and exploring microbiome sequencing datasets from public repositories.
+*Created by Samantha Ramcharran*
+
+Making microbiome research accessible — this tool streamlines the discovery of publicly available gut microbiome datasets from NCBI, empowering students and researchers to explore one of the most exciting frontiers in biomedical science.
 
 ⚠️ **Disclaimer:** This application is for **educational and research exploration purposes only**. It is not intended to replace, replicate, or serve as a substitute for NCBI's official services. Always verify data directly at NCBI for research use.
 

@@ -1973,15 +1973,18 @@ def main():
                 # Researcher sees search options - removed Long-Read as separate option
                 # since read type is now detected and shown as a column
                 search_options = [
-                    "All Available Data",
-                    "Mental Health",
-                    "Pain Conditions",
-                    "Digestive Health",
-                    "Metabolic Health",
+                    "All Gut Microbiome",
+                    "Depression & Anxiety",
+                    "Autism & Neurodevelopment",
+                    "Parkinson's & Alzheimer's",
+                    "Chronic Pain & Fibromyalgia",
+                    "IBS & IBD",
+                    "Obesity & Diabetes",
+                    "Long-Read (Nanopore/PacBio)",
                     "Shotgun Metagenomics",
                     "16S Amplicon",
-                    "Large Cohorts",
                     "Clinical Trials",
+                    "Large Cohorts",
                     "Custom Search",
                 ]
 
@@ -2002,7 +2005,7 @@ def main():
                         key="landing_custom"
                     )
                 else:
-                    query = RESEARCHER_SEARCHES.get(search_option, RESEARCHER_SEARCHES["All Available Data"])
+                    query = RESEARCHER_SEARCHES.get(search_option, RESEARCHER_SEARCHES["All Gut Microbiome"])
                 max_default = 500  # Higher default for researchers
 
             # Max results - compact slider
@@ -2125,15 +2128,18 @@ def main():
             # Organized search options
             # Note: Long-Read vs Short-Read is now detected automatically and shown in results
             selectable_options = [
-                "All Available Data",
-                "Mental Health",
-                "Pain Conditions",
-                "Digestive Health",
-                "Metabolic Health",
+                "All Gut Microbiome",
+                "Depression & Anxiety",
+                "Autism & Neurodevelopment",
+                "Parkinson's & Alzheimer's",
+                "Chronic Pain & Fibromyalgia",
+                "IBS & IBD",
+                "Obesity & Diabetes",
+                "Long-Read (Nanopore/PacBio)",
                 "Shotgun Metagenomics",
                 "16S Amplicon",
-                "Large Cohorts",
                 "Clinical Trials",
+                "Large Cohorts",
                 "Custom Search",
             ]
 
@@ -2159,7 +2165,7 @@ def main():
                     help="NCBI Entrez syntax"
                 )
             else:
-                query = RESEARCHER_SEARCHES.get(search_option, RESEARCHER_SEARCHES["All Available Data"])
+                query = RESEARCHER_SEARCHES.get(search_option, RESEARCHER_SEARCHES["All Gut Microbiome"])
 
         default_max = int(url_max) if url_max and url_max.isdigit() else 50
         max_results = st.slider("Max results", 10, 100, default_max, 10)

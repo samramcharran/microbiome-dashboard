@@ -16,11 +16,20 @@ import plotly.graph_objects as go
 from datetime import datetime
 import json
 import re
+import time
+import os
 
 
 # Configuration
 NCBI_BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 MAX_RESULTS = 10000  # Maximum for researchers
+
+# NCBI API compliance settings
+# Per NCBI E-utilities guidelines: https://www.ncbi.nlm.nih.gov/books/NBK25497/
+NCBI_TOOL_NAME = "microbiome-dashboard"
+NCBI_CONTACT_EMAIL = os.getenv("NCBI_EMAIL", "")  # Set via environment variable
+NCBI_API_KEY = os.getenv("NCBI_API_KEY", "")  # Optional: increases rate limit to 10/sec
+NCBI_RATE_LIMIT_DELAY = 0.34  # Seconds between requests (max 3/sec without API key)
 
 # Metadata harmonization ontology
 METADATA_ONTOLOGY = {
@@ -200,8 +209,14 @@ def search_sra(query: str, max_results: int = 50) -> list[str]:
         "term": query,
         "retmax": max_results,
         "retmode": "json",
-        "usehistory": "y"
+        "usehistory": "y",
+        "tool": NCBI_TOOL_NAME,
     }
+    # Add optional parameters per NCBI guidelines
+    if NCBI_CONTACT_EMAIL:
+        params["email"] = NCBI_CONTACT_EMAIL
+    if NCBI_API_KEY:
+        params["api_key"] = NCBI_API_KEY
 
     try:
         response = requests.get(search_url, params=params, timeout=30)
@@ -228,8 +243,14 @@ def fetch_sra_metadata(id_list: list[str], batch_size: int = 100) -> list[dict]:
             "db": "sra",
             "id": ",".join(batch),
             "rettype": "full",
-            "retmode": "xml"
+            "retmode": "xml",
+            "tool": NCBI_TOOL_NAME,
         }
+        # Add optional parameters per NCBI guidelines
+        if NCBI_CONTACT_EMAIL:
+            params["email"] = NCBI_CONTACT_EMAIL
+        if NCBI_API_KEY:
+            params["api_key"] = NCBI_API_KEY
 
         try:
             response = requests.get(fetch_url, params=params, timeout=60)
@@ -239,6 +260,10 @@ def fetch_sra_metadata(id_list: list[str], batch_size: int = 100) -> list[dict]:
         except requests.RequestException as e:
             st.warning(f"Batch {i//batch_size + 1} failed: {e}")
             continue
+
+        # Rate limiting: respect NCBI's 3 requests/second limit (10/sec with API key)
+        if i + batch_size < len(id_list):
+            time.sleep(NCBI_RATE_LIMIT_DELAY)
 
     return all_records
 
@@ -2166,7 +2191,9 @@ def main():
             st.markdown("""
 **Microbiome Dataset Discovery Dashboard**
 
-A tool for discovering and evaluating microbiome sequencing datasets from public repositories.
+An **educational tool** for discovering and exploring microbiome sequencing datasets from public repositories.
+
+⚠️ **Disclaimer:** This application is for **educational and research exploration purposes only**. It is not intended to replace, replicate, or serve as a substitute for NCBI's official services. Always verify data directly at NCBI for research use.
 
 **Data Sources:**
 - [NCBI SRA](https://www.ncbi.nlm.nih.gov/sra) - Sequence Read Archive
@@ -2174,7 +2201,7 @@ A tool for discovering and evaluating microbiome sequencing datasets from public
 - [PubMed](https://pubmed.ncbi.nlm.nih.gov/) - Linked publications
 
 **How It Works:**
-1. Searches NCBI using E-utilities API
+1. Searches NCBI using [E-utilities API](https://www.ncbi.nlm.nih.gov/books/NBK25497/)
 2. Extracts and harmonizes metadata
 3. Scores datasets for quality
 4. Categorizes by disease area
@@ -2183,6 +2210,9 @@ A tool for discovering and evaluating microbiome sequencing datasets from public
 - **SRR**: Sequencing run ID
 - **PRJNA**: BioProject ID
 - **PMID**: PubMed article ID
+
+**Terms of Use:**
+NCBI databases are in the public domain and freely available. This tool complies with [NCBI's E-utilities usage guidelines](https://www.ncbi.nlm.nih.gov/books/NBK25497/).
             """)
 
     # Page title based on mode
@@ -2270,11 +2300,17 @@ A tool for discovering and evaluating microbiome sequencing datasets from public
         with tab5:
             render_export_tab(df, records)
 
-    # Footer
+    # Footer with NCBI attribution and legal disclaimer
     st.markdown("---")
     st.caption(
-        "Data from [NCBI SRA](https://www.ncbi.nlm.nih.gov/sra) | "
-        "See 'About & Data Sources' in sidebar for more information"
+        "**Educational Use Only** — This tool is for educational and research exploration purposes. "
+        "It is not intended to replace or replicate NCBI services. "
+        "Always verify data directly at [NCBI SRA](https://www.ncbi.nlm.nih.gov/sra)."
+    )
+    st.caption(
+        "Data retrieved via [NCBI E-utilities API](https://www.ncbi.nlm.nih.gov/books/NBK25497/). "
+        "NCBI data is in the public domain and not subject to copyright. "
+        "See [NCBI Disclaimer](https://www.ncbi.nlm.nih.gov/home/about/policies/) for terms of use."
     )
 
 

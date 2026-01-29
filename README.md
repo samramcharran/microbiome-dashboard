@@ -64,6 +64,20 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+### Configuration (Optional)
+
+For compliance with NCBI guidelines, you can set environment variables:
+
+```bash
+# Developer contact email (recommended by NCBI for service notifications)
+export NCBI_EMAIL="your-email@example.com"
+
+# API key for higher rate limits (get one at https://www.ncbi.nlm.nih.gov/account/settings/)
+export NCBI_API_KEY="your-api-key"
+```
+
+Or create a `.env` file in the project root (not committed to git).
+
 ### Search Examples
 
 **Nanopore Fecal Studies:**
@@ -213,14 +227,25 @@ microbiome-dashboard/
 - plotly>=5.18.0
 - requests
 
+## Disclaimer
+
+**This application is for educational and research exploration purposes only.** It is not intended to replace, replicate, or serve as a substitute for NCBI's official services. Users should always verify data directly at [NCBI](https://www.ncbi.nlm.nih.gov/) for research and publication purposes.
+
 ## Data Sources & References
 
-All data is retrieved from official NCBI repositories. Every accession number is real and verifiable:
+All data is retrieved from official NCBI repositories via their public API. Every accession number is real and verifiable:
 
 - **[NCBI Sequence Read Archive (SRA)](https://www.ncbi.nlm.nih.gov/sra)** - Primary source for sequencing datasets
-- **[NCBI E-utilities API](https://www.ncbi.nlm.nih.gov/books/NBK25501/)** - Programmatic data retrieval
+- **[NCBI E-utilities API](https://www.ncbi.nlm.nih.gov/books/NBK25497/)** - Programmatic data retrieval
 - **[NCBI BioProject](https://www.ncbi.nlm.nih.gov/bioproject/)** - Study and project metadata
 - **[PubMed](https://pubmed.ncbi.nlm.nih.gov/)** - Linked scientific publications
+
+### NCBI Data Usage
+
+NCBI databases are produced by a U.S. government agency and are in the public domain. This application complies with [NCBI's E-utilities usage guidelines](https://www.ncbi.nlm.nih.gov/books/NBK25497/):
+- Requests include tool identification and respect rate limits
+- No bulk downloading or mirroring of NCBI data
+- Data is retrieved in real-time and not cached or redistributed
 
 ### Accession Types
 
@@ -253,3 +278,5 @@ All data is retrieved from official NCBI repositories. Every accession number is
 ## License
 
 MIT License
+
+**Note:** This license applies to the application code only. Data retrieved from NCBI is in the public domain as a work of the U.S. Government. NCBI requests that users cite the original data sources in publications. See [NCBI's policies](https://www.ncbi.nlm.nih.gov/home/about/policies/) for details.

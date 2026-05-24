@@ -4,6 +4,8 @@ Microbiome Dataset Discovery Dashboard
 Automated discovery and curation for microbiome research.
 Searches public repositories, scores data quality, and prepares
 datasets for downstream analysis pipelines.
+
+Educational tool only. Not a replacement for NCBI's official services.
 """
 
 import streamlit as st
@@ -30,6 +32,51 @@ NCBI_TOOL_NAME = "microbiome-dashboard"
 NCBI_CONTACT_EMAIL = os.getenv("NCBI_EMAIL", "")  # Set via environment variable
 NCBI_API_KEY = os.getenv("NCBI_API_KEY", "")  # Optional: increases rate limit to 10/sec
 NCBI_RATE_LIMIT_DELAY = 0.34  # Seconds between requests (max 3/sec without API key)
+
+# ---------------------------------------------------------------------------
+# NCBI rate limiting
+#
+# A single module-level gate that EVERY NCBI request passes through. This
+# guarantees a minimum spacing between consecutive calls regardless of which
+# function makes them (esearch, efetch, single batch or many). The previous
+# approach only slept between efetch batches, so a search with one batch of
+# results spaced nothing at all. This is per-process; on a multi-user
+# deployment it is a best-effort safeguard, not a hard cross-session lock.
+# ---------------------------------------------------------------------------
+_last_ncbi_request = 0.0
+
+
+def _ncbi_rate_gate():
+    """Block until at least NCBI_RATE_LIMIT_DELAY has passed since the last request."""
+    global _last_ncbi_request
+    elapsed = time.time() - _last_ncbi_request
+    if elapsed < NCBI_RATE_LIMIT_DELAY:
+        time.sleep(NCBI_RATE_LIMIT_DELAY - elapsed)
+    _last_ncbi_request = time.time()
+
+
+# Storage estimation constants
+# total_bases / 1e9 gives GIGABASES of sequence (a count of bases), which is
+# NOT the same as gigabytes of file size. Compressed FASTQ is very roughly
+# 0.3-0.5 bytes per base; we use 0.4 as a mid estimate. All storage and cost
+# figures below are rough estimates and clearly labeled as such.
+COMPRESSED_BYTES_PER_BASE = 0.4  # GB of compressed FASTQ per gigabase, approximate
+S3_COST_PER_GB_MONTH = 0.023     # USD, S3 Standard storage, approximate
+DOWNLOAD_MBPS = 100              # Assumed connection speed for download estimates
+
+
+def estimate_storage_gb(total_gigabases: float) -> float:
+    """Estimate compressed FASTQ file size in GIGABYTES from sequence gigabases."""
+    return total_gigabases * COMPRESSED_BYTES_PER_BASE
+
+
+def estimate_download_hours(storage_gb: float) -> float:
+    """Estimate download time in hours for a given file size in gigabytes."""
+    if storage_gb <= 0:
+        return 0.0
+    # storage_gb -> gigabits (x8) -> seconds at DOWNLOAD_MBPS -> hours
+    return (storage_gb * 8 * 1000) / DOWNLOAD_MBPS / 3600
+
 
 # Metadata harmonization ontology
 METADATA_ONTOLOGY = {
@@ -218,6 +265,8 @@ def search_sra(query: str, max_results: int = 50) -> list[str]:
         params["api_key"] = NCBI_API_KEY
 
     try:
+        # Respect NCBI rate limit before every request
+        _ncbi_rate_gate()
         response = requests.get(search_url, params=params, timeout=30)
         response.raise_for_status()
         data = response.json()
@@ -252,6 +301,8 @@ def fetch_sra_metadata(id_list: list[str], batch_size: int = 100) -> list[dict]:
             params["api_key"] = NCBI_API_KEY
 
         try:
+            # Respect NCBI rate limit before every request (every batch)
+            _ncbi_rate_gate()
             response = requests.get(fetch_url, params=params, timeout=60)
             response.raise_for_status()
             records = parse_sra_xml(response.text)
@@ -259,10 +310,6 @@ def fetch_sra_metadata(id_list: list[str], batch_size: int = 100) -> list[dict]:
         except requests.RequestException as e:
             st.warning(f"Batch {i//batch_size + 1} failed: {e}")
             continue
-
-        # Rate limiting: respect NCBI's 3 requests/second limit (10/sec with API key)
-        if i + batch_size < len(id_list):
-            time.sleep(NCBI_RATE_LIMIT_DELAY)
 
     return all_records
 
@@ -352,6 +399,9 @@ def extract_experiment_data(exp_package) -> Optional[dict]:
             record["bioproject_url"] = f"https://www.ncbi.nlm.nih.gov/bioproject/{bioproject_id}"
 
         # Check for restricted access
+        # NOTE: heuristic only. Keys off keywords in the title/abstract, so a
+        # fully public study that merely mentions "informed consent" or "IRB"
+        # may be flagged Private. SRA's actual access status is authoritative.
         abstract_lower = record.get("study_abstract", "").lower()
         title_lower = record.get("study_title", "").lower()
         is_restricted = any(kw in abstract_lower or kw in title_lower for kw in RESTRICTED_KEYWORDS)
@@ -401,7 +451,9 @@ def extract_experiment_data(exp_package) -> Optional[dict]:
     record["total_spots"] = total_spots
     record["total_bases"] = total_bases
     record["avg_read_length"] = total_bases / total_spots if total_spots > 0 else 0
-    record["total_gb"] = total_bases / 1e9
+    # total_gigabases is a COUNT OF SEQUENCED BASES (in billions), not file size.
+    # See estimate_storage_gb() for converting this to an estimated file size.
+    record["total_gigabases"] = total_bases / 1e9
     record["run_accession"] = run_accessions[0] if run_accessions else ""
 
     if record["run_accession"]:
@@ -428,6 +480,9 @@ def extract_experiment_data(exp_package) -> Optional[dict]:
         if any(kw in searchable_text for kw in keywords):
             detected_diseases.append(category)
     record["disease_categories"] = detected_diseases
+    # Primary category is the first match by DISEASE_CATEGORIES order. This is
+    # a deliberate priority ordering (gut-brain axis first) given the tool's
+    # research focus, not an arbitrary choice.
     record["disease_category"] = detected_diseases[0] if detected_diseases else "Unclassified"
     record["gut_brain_relevant"] = "Gut-Brain Axis" in detected_diseases or "Pain Conditions" in detected_diseases
 
@@ -468,14 +523,14 @@ def calculate_quality_score(record: dict, scoring_mode: str = "auto") -> dict:
     use_long_read_scoring = scoring_mode == "nanopore" or (scoring_mode == "auto" and is_long_read)
 
     if use_long_read_scoring:
-        total_gb = record.get("total_gb", 0)
-        if total_gb >= 10:
+        total_gigabases = record.get("total_gigabases", 0)
+        if total_gigabases >= 10:
             scores["depth_score"] = 25
-        elif total_gb >= 5:
+        elif total_gigabases >= 5:
             scores["depth_score"] = 20
-        elif total_gb >= 1:
+        elif total_gigabases >= 1:
             scores["depth_score"] = 15
-        elif total_gb >= 0.1:
+        elif total_gigabases >= 0.1:
             scores["depth_score"] = 10
         else:
             scores["depth_score"] = 5
@@ -592,7 +647,7 @@ def create_results_dataframe(records: list[dict]) -> pd.DataFrame:
         "run_accession", "run_url", "accession", "sra_url",
         "bioproject_id", "bioproject_url", "pubmed_ids",
         "title", "organism", "platform", "seq_type", "read_type",
-        "total_gb", "avg_read_length",
+        "total_gigabases", "avg_read_length",
         "access_type", "vault_status", "grade", "disease_category",
         "harmonized_count", "is_fecal_sample", "gut_brain_relevant",
         "total_score", "quality_score"
@@ -721,7 +776,7 @@ def render_temporal_trend(df: pd.DataFrame, records: list[dict]):
 
 def render_platform_breakdown(df: pd.DataFrame):
     """Render a breakdown of sequencing platforms and data volume."""
-    st.markdown("### Platform & Data Volume")
+    st.markdown("### Platform & Sequencing Volume")
 
     if df.empty:
         st.caption("Run a search to see platform breakdown.")
@@ -743,14 +798,15 @@ def render_platform_breakdown(df: pd.DataFrame):
             st.plotly_chart(fig, use_container_width=True)
 
     with col2:
-        # Data volume by status
-        if "vault_status" in df.columns and "total_gb" in df.columns:
-            volume_by_status = df.groupby("vault_status")["total_gb"].sum().reset_index()
+        # Sequencing volume by status (gigabases of sequence, not file size)
+        if "vault_status" in df.columns and "total_gigabases" in df.columns:
+            volume_by_status = df.groupby("vault_status")["total_gigabases"].sum().reset_index()
             fig = px.bar(
                 volume_by_status,
                 x="vault_status",
-                y="total_gb",
-                title="Data Volume by Status (Gb)",
+                y="total_gigabases",
+                title="Sequence Volume by Status (Gigabases)",
+                labels={"total_gigabases": "Gigabases", "vault_status": "Status"},
                 color="vault_status",
                 color_discrete_map={
                     "Banked": "#2ecc71",
@@ -787,7 +843,7 @@ def render_comparison_view(selected_accessions: list[str], records: list[dict]):
         ("Organism", "organism"),
         ("Platform", "platform"),
         ("Seq Type", "seq_type"),
-        ("Total Gb", "total_gb"),
+        ("Gigabases", "total_gigabases"),
         ("Quality Score", "total_score"),
         ("Status", "vault_status"),
         ("Disease Category", "disease_category"),
@@ -804,7 +860,7 @@ def render_comparison_view(selected_accessions: list[str], records: list[dict]):
             st.markdown(f"**Dataset {idx + 1}**")
             for label, field in comparison_fields:
                 value = record.get(field, "N/A")
-                if field == "total_gb" and isinstance(value, (int, float)):
+                if field == "total_gigabases" and isinstance(value, (int, float)):
                     value = f"{value:.2f}"
                 elif isinstance(value, bool):
                     value = "Yes" if value else "No"
@@ -897,27 +953,28 @@ def render_infrastructure_metrics(df: pd.DataFrame):
 
     st.markdown("#### Infrastructure Planning")
 
-    # Calculate totals
+    # Banked sequence volume (gigabases), then estimate file size and cost
     banked_df = df[df["vault_status"] == "Banked"] if "vault_status" in df.columns else df
-    total_gb = banked_df["total_gb"].sum() if "total_gb" in banked_df.columns else 0
+    total_gigabases = banked_df["total_gigabases"].sum() if "total_gigabases" in banked_df.columns else 0
+    est_storage_gb = estimate_storage_gb(total_gigabases)
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric("Storage Required", f"{total_gb:.1f} Gb")
-        st.caption(f"Est. S3 cost: ${total_gb * 0.023:.2f}/month")
+        st.metric("Est. Storage", f"{est_storage_gb:.1f} GB")
+        st.caption(f"Est. S3 cost: ${est_storage_gb * S3_COST_PER_GB_MONTH:.2f}/month "
+                   f"(assumes compressed FASTQ)")
 
     with col2:
-        # Estimate download time at 100 Mbps
-        download_hours = (total_gb * 8) / (100 * 3600) if total_gb > 0 else 0
-        st.metric("Download Time", f"{download_hours:.1f} hrs")
-        st.caption("At 100 Mbps connection")
+        download_hours = estimate_download_hours(est_storage_gb)
+        st.metric("Est. Download Time", f"{download_hours:.1f} hrs")
+        st.caption(f"At {DOWNLOAD_MBPS} Mbps connection")
 
     with col3:
-        # Estimate processing time (rough: 1 hour per 10 Gb)
-        processing_hours = total_gb / 10
-        st.metric("Processing Time", f"{processing_hours:.1f} hrs")
-        st.caption("Est. bioinformatics pipeline")
+        # Rough processing estimate: 1 hour per 10 gigabases of sequence
+        processing_hours = total_gigabases / 10
+        st.metric("Est. Processing Time", f"{processing_hours:.1f} hrs")
+        st.caption("Rough bioinformatics pipeline estimate")
 
 
 def render_strategic_recommendations(df: pd.DataFrame, records: list[dict]):
@@ -976,7 +1033,7 @@ def render_mission_control(df: pd.DataFrame, records: list[dict]):
     pending = len(df[df["vault_status"] == "Pending Review"]) if "vault_status" in df.columns else 0
     not_suitable = len(df[df["vault_status"] == "Not Suitable"]) if "vault_status" in df.columns else 0
     gut_brain = int(df["gut_brain_relevant"].sum()) if "gut_brain_relevant" in df.columns else 0
-    total_gb = df["total_gb"].sum() if "total_gb" in df.columns else 0
+    total_gigabases = df["total_gigabases"].sum() if "total_gigabases" in df.columns else 0
     public_count = len(df[df["access_type"] == "Public"]) if "access_type" in df.columns else 0
     private_count = len(df[df["access_type"] == "Private (Requires Access)"]) if "access_type" in df.columns else 0
 
@@ -998,7 +1055,7 @@ def render_mission_control(df: pd.DataFrame, records: list[dict]):
         with col4:
             st.metric("Not Suitable", not_suitable, delta_color="inverse")
         with col5:
-            st.metric("Total Volume", f"{total_gb:.1f} Gb")
+            st.metric("Sequence Volume", f"{total_gigabases:.1f} Gb")
 
         st.markdown("---")
 
@@ -1065,17 +1122,17 @@ def render_mission_control(df: pd.DataFrame, records: list[dict]):
         render_disease_burden_chart(df)
 
         # Category breakdown
-        required_cols = ["disease_category", "run_accession", "total_gb", "quality_score"]
+        required_cols = ["disease_category", "run_accession", "total_gigabases", "quality_score"]
         if all(col in df.columns for col in required_cols) and not df.empty:
             st.markdown("---")
             st.markdown("##### Category Details")
             cat_summary = df.groupby("disease_category").agg({
                 "run_accession": "count",
-                "total_gb": "sum",
+                "total_gigabases": "sum",
                 "quality_score": "mean"
             }).rename(columns={
                 "run_accession": "Datasets",
-                "total_gb": "Data (Gb)",
+                "total_gigabases": "Gigabases",
                 "quality_score": "Avg Score"
             }).round(1)
             cat_summary = cat_summary.sort_values("Datasets", ascending=False)
@@ -1095,10 +1152,10 @@ def render_mission_control(df: pd.DataFrame, records: list[dict]):
             high_quality = len(df[df["quality_score"] >= 70]) if "quality_score" in df.columns else 0
             st.metric("High Quality (70+)", high_quality)
         with col3:
-            with_pubmed = len(df[df["pubmed_id"].notna() & (df["pubmed_id"] != "")]) if "pubmed_id" in df.columns else 0
+            with_pubmed = len(df[df["pubmed_ids"].notna() & (df["pubmed_ids"] != "")]) if "pubmed_ids" in df.columns else 0
             st.metric("With Publications", with_pubmed)
         with col4:
-            st.metric("Total Volume", f"{total_gb:.1f} Gb")
+            st.metric("Sequence Volume", f"{total_gigabases:.1f} Gb")
 
         st.markdown("---")
 
@@ -1197,21 +1254,22 @@ def render_mission_control(df: pd.DataFrame, records: list[dict]):
     elif current_view == "Infrastructure":
         st.markdown("#### Infrastructure Planning - Storage & Compute")
 
-        # Calculate estimates
-        banked_gb = df[df["vault_status"] == "Banked"]["total_gb"].sum() if "vault_status" in df.columns and "total_gb" in df.columns else 0
-        pending_gb = df[df["vault_status"] == "Pending Review"]["total_gb"].sum() if "vault_status" in df.columns and "total_gb" in df.columns else 0
+        # Sequence volume (gigabases) by status, then estimated file sizes
+        banked_gigabases = df[df["vault_status"] == "Banked"]["total_gigabases"].sum() if "vault_status" in df.columns and "total_gigabases" in df.columns else 0
+        pending_gigabases = df[df["vault_status"] == "Pending Review"]["total_gigabases"].sum() if "vault_status" in df.columns and "total_gigabases" in df.columns else 0
+        est_total_storage = estimate_storage_gb(total_gigabases)
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("Total Data Volume", f"{total_gb:.1f} Gb")
+            st.metric("Total Sequence Volume", f"{total_gigabases:.1f} Gb")
         with col2:
-            st.metric("Banked Data", f"{banked_gb:.1f} Gb")
+            st.metric("Banked Sequence", f"{banked_gigabases:.1f} Gb")
         with col3:
-            st.metric("Pending Data", f"{pending_gb:.1f} Gb")
+            st.metric("Pending Sequence", f"{pending_gigabases:.1f} Gb")
         with col4:
-            # Estimate download time at 100 Mbps
-            download_hours = (total_gb * 8) / 100 / 3600
-            st.metric("Est. Download Time", f"{download_hours:.1f} hrs", help="At 100 Mbps")
+            download_hours = estimate_download_hours(est_total_storage)
+            st.metric("Est. Download Time", f"{download_hours:.1f} hrs",
+                      help=f"At {DOWNLOAD_MBPS} Mbps, assumes compressed FASTQ")
 
         st.markdown("---")
 
@@ -1440,7 +1498,7 @@ def render_dataset_browser(df: pd.DataFrame, records: list[dict]):
             "vault_status": st.column_config.TextColumn("Status"),
             "access_type": st.column_config.TextColumn("Access"),
             "disease_category": st.column_config.TextColumn("Disease"),
-            "total_gb": st.column_config.NumberColumn("Gb", format="%.2f"),
+            "total_gigabases": st.column_config.NumberColumn("Gigabases", format="%.2f", help="Billions of sequenced bases (not file size)"),
             "total_score": st.column_config.NumberColumn("Score"),
             "organism": st.column_config.TextColumn("Organism"),
             "seq_type": st.column_config.TextColumn("Platform"),
@@ -1651,7 +1709,7 @@ def render_data_quality(df: pd.DataFrame):
     st.markdown("""
 | Component | Max Points | What It Measures |
 |-----------|------------|------------------|
-| Sequencing Depth | 25 | Read count (short-read) or throughput in Gb (long-read) |
+| Sequencing Depth | 25 | Read count (short-read) or throughput in gigabases (long-read) |
 | Read Length | 25 | Longer reads enable better taxonomic resolution |
 | Metadata Quality | 25 | Number of harmonized clinical/sample fields |
 | Clinical Relevance | 15 | Presence of disease, treatment, demographics |
@@ -1706,7 +1764,7 @@ def render_export_tab(df: pd.DataFrame, records: list[dict]):
                             "bioproject": r.get("bioproject_id"),
                             "organism": r.get("organism"),
                             "disease": r.get("disease_category"),
-                            "gb": r.get("total_gb"),
+                            "gigabases": r.get("total_gigabases"),
                             "url": r.get("run_url")
                         }
                         for r in banked_records
@@ -1740,16 +1798,22 @@ prefetch --option-file accessions.txt
 fasterq-dump --split-files *.sra""", language="bash")
 
     # Storage estimate
-    if "total_gb" in df.columns:
+    if "total_gigabases" in df.columns:
         banked_df = df[df["vault_status"] == "Banked"] if "vault_status" in df.columns else df
-        total_gb = banked_df["total_gb"].sum()
+        total_gigabases = banked_df["total_gigabases"].sum()
+        est_storage_gb = estimate_storage_gb(total_gigabases)
 
         st.markdown("### Storage Estimate")
-        col1, col2 = st.columns(2)
+        st.caption("Rough estimate. Assumes compressed FASTQ at "
+                   f"~{COMPRESSED_BYTES_PER_BASE} GB per gigabase. Actual size varies by "
+                   "compression, read length, and quality scores.")
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Banked Data Volume", f"{total_gb:.1f} Gb")
+            st.metric("Banked Sequence Volume", f"{total_gigabases:.1f} Gb")
         with col2:
-            st.metric("Est. S3 Cost", f"${total_gb * 0.023:.2f}/month")
+            st.metric("Est. File Size", f"{est_storage_gb:.1f} GB")
+        with col3:
+            st.metric("Est. S3 Cost", f"${est_storage_gb * S3_COST_PER_GB_MONTH:.2f}/month")
 
 
 def main():
@@ -1881,7 +1945,7 @@ def main():
                     <circle cx="21" cy="5.5" r="0.5" fill="white" opacity="0.6"/>
                     <ellipse cx="9" cy="12" rx="2.5" ry="1.5" fill="#388E3C"/>
                 </svg>
-                <span class="feature-text">10,000+ Datasets</span>
+                <span class="feature-text">Search NCBI SRA</span>
             </div>
             <div class="feature-item">
                 <!-- Quality gauge/meter with bacteria -->
@@ -2006,16 +2070,18 @@ def main():
                     )
                 else:
                     query = RESEARCHER_SEARCHES.get(search_option, RESEARCHER_SEARCHES["All Gut Microbiome"])
-                max_default = 500  # Higher default for researchers
+                max_default = 100
 
-            # Max results - compact slider
-            max_limit = 10000 if role == "Researcher" else 500
+            # Max results - compact slider.
+            # Capped at 100 to keep this a lightweight real-time tool and to
+            # stay comfortably within NCBI rate limits. Larger pulls would mean
+            # many sequential efetch calls.
             max_results = st.slider(
                 "Max results",
                 min_value=10,
-                max_value=max_limit,
-                value=min(max_default, max_limit),
-                step=10 if max_limit <= 500 else 100,
+                max_value=100,
+                value=min(max_default, 100),
+                step=10,
                 key="landing_max"
             )
 
@@ -2055,7 +2121,7 @@ def main():
                     st.warning("No datasets found. Try adjusting your search.")
 
         # Compact footer
-        st.markdown("<div style='text-align: center; margin-top: 20px;'><small style='color: #888;'>Data from <a href='https://www.ncbi.nlm.nih.gov/sra' target='_blank'>NCBI SRA</a></small></div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; margin-top: 20px;'><small style='color: #888;'>Data from <a href='https://www.ncbi.nlm.nih.gov/sra' target='_blank'>NCBI SRA</a> &middot; Educational use only</small></div>", unsafe_allow_html=True)
 
         return  # Stop here if on landing page
 
@@ -2168,6 +2234,7 @@ def main():
                 query = RESEARCHER_SEARCHES.get(search_option, RESEARCHER_SEARCHES["All Gut Microbiome"])
 
         default_max = int(url_max) if url_max and url_max.isdigit() else 50
+        default_max = min(default_max, 100)
         max_results = st.slider("Max results", 10, 100, default_max, 10)
 
         st.markdown("---")
@@ -2202,7 +2269,7 @@ def main():
 
 Making microbiome research accessible — this tool streamlines the discovery of publicly available gut microbiome datasets from NCBI, empowering students and researchers to explore one of the most exciting frontiers in biomedical science.
 
-⚠️ **Disclaimer:** This application is for **educational and research exploration purposes only**. It is not intended to replace, replicate, or serve as a substitute for NCBI's official services. Always verify data directly at NCBI for research use.
+⚠️ **Disclaimer:** This application is an **educational tool for research exploration only**. It is not intended to replace, replicate, or serve as a substitute for NCBI's official services. Always verify data directly at NCBI for research use.
 
 **Data Sources:**
 - [NCBI SRA](https://www.ncbi.nlm.nih.gov/sra) - Sequence Read Archive
@@ -2221,7 +2288,7 @@ Making microbiome research accessible — this tool streamlines the discovery of
 - **PMID**: PubMed article ID
 
 **Terms of Use:**
-NCBI databases are in the public domain and freely available. This tool complies with [NCBI's E-utilities usage guidelines](https://www.ncbi.nlm.nih.gov/books/NBK25497/).
+NCBI databases are in the public domain and freely available. This tool follows [NCBI's E-utilities usage guidelines](https://www.ncbi.nlm.nih.gov/books/NBK25497/).
             """)
 
     # Page title based on mode
@@ -2312,7 +2379,7 @@ NCBI databases are in the public domain and freely available. This tool complies
     # Footer with NCBI attribution and legal disclaimer
     st.markdown("---")
     st.caption(
-        "**Educational Use Only** — This tool is for educational and research exploration purposes. "
+        "**Educational Use Only** — This tool is an educational aid for research exploration. "
         "It is not intended to replace or replicate NCBI services. "
         "Always verify data directly at [NCBI SRA](https://www.ncbi.nlm.nih.gov/sra)."
     )

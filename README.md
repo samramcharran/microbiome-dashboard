@@ -66,11 +66,11 @@ streamlit run app.py
 
 ### NCBI API Compliance
 
-This application **fully complies with NCBI E-utilities guidelines** out of the box:
+This application **fully complies with NCBI E-utilities guidelines**:
 
-- ✅ **Tool identification**: All API requests include `tool=microbiome-dashboard`
-- ✅ **Rate limiting**: Automatic 0.34-second delay between requests (stays under 3 requests/second limit)
-- ✅ **No data hoarding**: Real-time queries only, no caching or mirroring of NCBI data
+- **Tool identification**: All API requests include `tool=microbiome-dashboard`
+- **Rate limiting**: Automatic 0.34-second delay between requests (stays under 3 requests/second limit)
+- **No data hoarding**: Real-time queries only, no caching or mirroring of NCBI data
 
 **Optional enhancements** (not required for compliance):
 
